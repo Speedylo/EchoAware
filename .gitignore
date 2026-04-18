@@ -9,3 +9,4 @@ coverage/
 Thumbs.db
 npm-debug.log*
 System Architecture and Data Model/
+.claude/
