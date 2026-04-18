@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>EchoAware</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="state-calibrating" class="state" hidden>
+        <p>Calibrating: <span id="video-count">0</span> / 5 videos</p>
+      </div>
+      <div id="state-healthy" class="state" hidden>
+        <p id="diversity-score"></p>
+      </div>
+      <div id="state-alert" class="state" hidden>
+        <p id="alert-score"></p>
+        <p id="topic-label">Analysing...</p>
+        <ul id="escape-queries"></ul>
+      </div>
+    </div>
+    <script src="../../dist/popup.js"></script>
+  </body>
+</html>
