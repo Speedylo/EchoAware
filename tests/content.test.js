@@ -1,0 +1,130 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { urlDetector } from '../src/content/urlDetector.js';
+
+// ── urlDetector ───────────────────────────────────────────────────────────────
+
+describe('urlDetector.isWatchUrl', () => {
+  it('accepts standard watch URLs', () => {
+    expect(urlDetector.isWatchUrl('https://www.youtube.com/watch?v=abc123')).toBe(true);
+    expect(urlDetector.isWatchUrl('https://www.youtube.com/watch?v=XYZ&list=PL1')).toBe(true);
+  });
+
+  it('rejects Shorts URLs', () => {
+    expect(urlDetector.isWatchUrl('https://www.youtube.com/shorts/abc123')).toBe(false);
+  });
+
+  it('rejects homepage and channel URLs', () => {
+    expect(urlDetector.isWatchUrl('https://www.youtube.com/')).toBe(false);
+    expect(urlDetector.isWatchUrl('https://www.youtube.com/@SomeChannel')).toBe(false);
+    expect(urlDetector.isWatchUrl('https://www.youtube.com/results?search_query=cats')).toBe(false);
+  });
+
+  it('rejects non-YouTube URLs', () => {
+    expect(urlDetector.isWatchUrl('https://www.google.com/watch?v=abc')).toBe(false);
+  });
+});
+
+describe('urlDetector.init', () => {
+  let originalPushState;
+
+  beforeEach(() => {
+    originalPushState = history.pushState;
+  });
+
+  afterEach(() => {
+    history.pushState = originalPushState;
+  });
+
+  it('fires onNavigate when yt-navigate-finish fires on a watch URL', () => {
+    const onNavigate = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { href: 'https://www.youtube.com/watch?v=abc123' },
+      writable: true,
+      configurable: true,
+    });
+
+    urlDetector.init(onNavigate);
+    window.dispatchEvent(new Event('yt-navigate-finish'));
+
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(onNavigate).toHaveBeenCalledWith('https://www.youtube.com/watch?v=abc123');
+  });
+
+  it('does NOT fire onNavigate when yt-navigate-finish fires on a non-watch URL', () => {
+    const onNavigate = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { href: 'https://www.youtube.com/' },
+      writable: true,
+      configurable: true,
+    });
+
+    urlDetector.init(onNavigate);
+    window.dispatchEvent(new Event('yt-navigate-finish'));
+
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('does NOT fire onNavigate for Shorts URLs', () => {
+    const onNavigate = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { href: 'https://www.youtube.com/shorts/abc123' },
+      writable: true,
+      configurable: true,
+    });
+
+    urlDetector.init(onNavigate);
+    window.dispatchEvent(new Event('yt-navigate-finish'));
+
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('fires onNavigate via pushState interception for a watch URL', () => {
+    const onNavigate = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { href: 'https://www.youtube.com/watch?v=pushed' },
+      writable: true,
+      configurable: true,
+    });
+
+    urlDetector.init(onNavigate);
+    history.pushState({}, '', '/watch?v=pushed');
+
+    expect(onNavigate).toHaveBeenCalledWith('https://www.youtube.com/watch?v=pushed');
+  });
+});
+
+// ── metadataScraper ───────────────────────────────────────────────────────────
+
+describe('scrapeMetadata', () => {
+  it('returns title, channelName, and description from DOM elements', async () => {
+    document.body.innerHTML = `
+      <h1 class="ytd-watch-metadata">
+        <yt-formatted-string>My Video Title</yt-formatted-string>
+      </h1>
+      <ytd-channel-name>
+        <yt-formatted-string id="text">Great Channel</yt-formatted-string>
+      </ytd-channel-name>
+      <div id="description-inline-expander">
+        <yt-attributed-string>Some description text</yt-attributed-string>
+      </div>
+    `;
+
+    const { scrapeMetadata } = await import('../src/content/metadataScraper.js');
+    const result = scrapeMetadata();
+
+    expect(result.title).toBe('My Video Title');
+    expect(result.channelName).toBe('Great Channel');
+    expect(result.description).toBe('Some description text');
+  });
+
+  it('returns empty strings when elements are absent', async () => {
+    document.body.innerHTML = '';
+    const { scrapeMetadata } = await import('../src/content/metadataScraper.js');
+    const result = scrapeMetadata();
+
+    expect(result.title).toBe('');
+    expect(result.channelName).toBe('');
+    expect(result.description).toBe('');
+  });
+});
