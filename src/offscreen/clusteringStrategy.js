@@ -8,7 +8,6 @@ export class ClusteringStrategy {
    * @param {number[][]} embeddings  Array of 384-float vectors
    * @returns {Promise<Array<{videoIndex: number, clusterId: number}>>}
    */
-  // eslint-disable-next-line no-unused-vars
   async cluster(embeddings) {
     throw new Error('ClusteringStrategy.cluster() must be implemented by subclass');
   }

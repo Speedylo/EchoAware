@@ -1,4 +1,4 @@
-const DEFAULTS = {
+export const DEFAULTS = {
   thresholdD: 0.6,
   minVideos: 5,
   windowDays: 14,
