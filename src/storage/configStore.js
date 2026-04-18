@@ -1,3 +1,5 @@
+import { CONFIG_STORE_KEY } from '../shared/constants.js';
+
 export const DEFAULTS = {
   thresholdD: 0.6,
   minVideos: 5,
@@ -7,5 +9,20 @@ export const DEFAULTS = {
   userConsent: false,
 };
 
-export async function getConfig()        { throw new Error('Not implemented'); }
-export async function setConfig(partial) { throw new Error('Not implemented'); }
+/** @returns {Promise<typeof DEFAULTS>} */
+export function getConfig() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(CONFIG_STORE_KEY, (result) => {
+      resolve({ ...DEFAULTS, ...(result[CONFIG_STORE_KEY] ?? {}) });
+    });
+  });
+}
+
+/** @param {Partial<typeof DEFAULTS>} partial */
+export async function setConfig(partial) {
+  const current = await getConfig();
+  const merged = { ...current, ...partial };
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [CONFIG_STORE_KEY]: merged }, resolve);
+  });
+}
