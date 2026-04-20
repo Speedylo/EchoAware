@@ -6,6 +6,8 @@ export const DEFAULTS = {
   windowDays: 14,
   inferenceEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
   modelVersion: 'all-MiniLM-L6-v2',
+  chatModel: 'openrouter/free',
+  openRouterApiKey: process.env.OPENROUTER_API_KEY ?? '',
   userConsent: false,
 };
 
