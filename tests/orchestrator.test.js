@@ -181,7 +181,8 @@ describe.skipIf(!OPENROUTER_API_KEY)(
         });
 
         const body = await response.json();
-        expect(response.ok, `OpenRouter error: ${JSON.stringify(body?.error)}`).toBe(true);
+        if (!response.ok) throw new Error(`OpenRouter error: ${JSON.stringify(body?.error)}`);
+        expect(response.ok).toBe(true);
 
         const content = JSON.parse(body.choices[0].message.content);
 

@@ -5,7 +5,6 @@ import { resetStorageManager, getStorageManager } from '../src/storage/StorageMa
 import {
   MSG_EMBED_REQUEST,
   MSG_CLUSTER_REQUEST,
-  MSG_STATE_UPDATED,
 } from '../src/shared/messageTypes.js';
 
 // ── Module mocks (hoisted by Vitest) ─────────────────────────────────────────
@@ -110,10 +109,10 @@ async function seedVideos(n, { clusterAssignmentFn } = {}) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('runAnalysisPipeline — deduplication', () => {
-  let storage;
+  let _storage;
 
   beforeEach(async () => {
-    storage = await freshStorage();
+    _storage = await freshStorage();
     vi.clearAllMocks();
   });
 
