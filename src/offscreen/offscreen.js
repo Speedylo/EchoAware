@@ -2,14 +2,23 @@ import { MSG_EMBED_REQUEST, MSG_CLUSTER_REQUEST } from '../shared/messageTypes.j
 import { getEmbedding } from './embedder.js';
 import { runClustering } from './clusterer.js';
 
+function respondWith(promise, sendResponse, label) {
+  promise
+    .then(sendResponse)
+    .catch((err) => {
+      console.error(`[EchoAware offscreen] ${label} failed:`, err);
+      sendResponse(null);
+    });
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.target !== 'offscreen') return false;
+  if (message?.target !== 'offscreen') return false;
   switch (message.type) {
     case MSG_EMBED_REQUEST:
-      getEmbedding(message.payload.text).then(sendResponse);
+      respondWith(getEmbedding(message.payload.text), sendResponse, 'embed');
       return true;
     case MSG_CLUSTER_REQUEST:
-      runClustering(message.payload.embeddings).then(sendResponse);
+      respondWith(runClustering(message.payload.embeddings), sendResponse, 'cluster');
       return true;
   }
   return false;

@@ -6,7 +6,7 @@ export const CONFIG_STORE_KEY = 'echoaware_config';
 
 // MVP: 5 videos (overrides 15 in architecture docs)
 export const MIN_VIDEOS_CALIBRATION = 5;
-export const DEFAULT_THRESHOLD_D = 0.6;
+export const DEFAULT_THRESHOLD_D = 0.7;
 
 export const OFFSCREEN_HTML_PATH = 'src/offscreen/offscreen.html';
 export const OFFSCREEN_REASON = 'WORKERS';
