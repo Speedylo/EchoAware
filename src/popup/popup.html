@@ -8,7 +8,7 @@
   <body>
     <div id="app">
       <div id="state-calibrating" class="state" hidden>
-        <p>Calibrating: <span id="video-count">0</span> / 5 videos</p>
+        <p class="calibrating-msg">Calibrating: <span id="video-count">0</span> / 5 videos watched</p>
       </div>
       <div id="state-healthy" class="state" hidden>
         <p id="diversity-score"></p>
@@ -16,9 +16,14 @@
       <div id="state-alert" class="state" hidden>
         <p id="alert-score"></p>
         <p id="topic-label">Analysing...</p>
+        <ul id="representative-titles" hidden></ul>
+        <p class="escape-header">
+          Break the bubble
+          <span class="info-tip" title="AI-generated queries to help you find different perspectives on this topic">ⓘ</span>
+        </p>
         <ul id="escape-queries"></ul>
       </div>
     </div>
-    <script src="../../dist/popup.js"></script>
+    <script type="module" src="../../dist/popup.js"></script>
   </body>
 </html>

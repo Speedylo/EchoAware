@@ -1,11 +1,30 @@
+import { CONFIG_STORE_KEY } from '../shared/constants.js';
+
 export const DEFAULTS = {
-  thresholdD: 0.6,
+  thresholdD: 0.7,
   minVideos: 5,
   windowDays: 14,
   inferenceEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
   modelVersion: 'all-MiniLM-L6-v2',
+  chatModel: 'openrouter/free',
+  openRouterApiKey: process.env.OPENROUTER_API_KEY ?? '',
   userConsent: false,
 };
 
-export async function getConfig()        { throw new Error('Not implemented'); }
-export async function setConfig(partial) { throw new Error('Not implemented'); }
+/** @returns {Promise<typeof DEFAULTS>} */
+export function getConfig() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(CONFIG_STORE_KEY, (result) => {
+      resolve({ ...DEFAULTS, ...(result[CONFIG_STORE_KEY] ?? {}) });
+    });
+  });
+}
+
+/** @param {Partial<typeof DEFAULTS>} partial */
+export async function setConfig(partial) {
+  const current = await getConfig();
+  const merged = { ...current, ...partial };
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [CONFIG_STORE_KEY]: merged }, resolve);
+  });
+}

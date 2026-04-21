@@ -19,7 +19,9 @@
     "esbuild": "^0.24.0",
     "eslint": "^9.0.0",
     "eslint-plugin-vitest": "^0.5.4",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^17.5.0",
+    "jsdom": "^29.0.2",
     "vitest": "^2.0.0"
   }
 }
