@@ -80,11 +80,13 @@ describe('triggerBadgeAlert', () => {
 });
 
 // ── callOpenRouter (unit — mocked fetch) ──────────────────────────────────────
-// Use vi.stubGlobal / vi.unstubAllGlobals so the getConfig module mock is
-// never touched by cleanup, while fetch is still fully reset between tests.
+// Save/restore only globalThis.fetch so the top-level chrome stub and the
+// vi.mock() module stubs are not disturbed between tests.
 
 describe('callOpenRouter (unit)', () => {
-  afterEach(() => { vi.unstubAllGlobals(); });
+  let _realFetch;
+  beforeEach(() => { _realFetch = globalThis.fetch; });
+  afterEach(() => { globalThis.fetch = _realFetch; });
 
   it('POSTs to the configured endpoint with Bearer auth', async () => {
     const mockBody = {
@@ -151,38 +153,44 @@ describe.skipIf(!OPENROUTER_API_KEY)(
   () => {
     it(
       'returns a topicLabel string and exactly 3 escapeQueries for a real prompt',
-      async () => {
+      async (ctx) => {
         const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-            'HTTP-Referer': 'chrome-extension://echoaware',
-            'X-Title': 'EchoAware',
-          },
-          body: JSON.stringify({
-            model: 'openrouter/free',
-            messages: [
-              {
-                role: 'system',
-                content:
-                  'You detect echo chambers in YouTube viewing patterns. Always reply with valid JSON only, no markdown fences.',
-              },
-              {
-                role: 'user',
-                content:
-                  'I keep watching: "Bitcoin bull run 2024", "Crypto millionaire secrets", "Altcoin season predictions". ' +
-                  'Identify the main topic and give 3 search queries to diversify my feed. ' +
-                  'Reply in this JSON shape: {"topicLabel":"...","escapeQueries":[{"queryText":"..."},{"queryText":"..."},{"queryText":"..."}]}',
-              },
-            ],
-          }),
-        });
+        let response;
+        try {
+          response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+              'HTTP-Referer': 'chrome-extension://echoaware',
+              'X-Title': 'EchoAware',
+            },
+            body: JSON.stringify({
+              model: 'openrouter/free',
+              messages: [
+                {
+                  role: 'system',
+                  content:
+                    'You detect echo chambers in YouTube viewing patterns. Always reply with valid JSON only, no markdown fences.',
+                },
+                {
+                  role: 'user',
+                  content:
+                    'I keep watching: "Bitcoin bull run 2024", "Crypto millionaire secrets", "Altcoin season predictions". ' +
+                    'Identify the main topic and give 3 search queries to diversify my feed. ' +
+                    'Reply in this JSON shape: {"topicLabel":"...","escapeQueries":[{"queryText":"..."},{"queryText":"..."},{"queryText":"..."}]}',
+                },
+              ],
+            }),
+          });
+        } catch {
+          // Network unreachable (timeout, no internet, rate-limit) — skip, don't fail.
+          ctx.skip();
+          return;
+        }
 
         const body = await response.json();
         if (!response.ok) throw new Error(`OpenRouter error: ${JSON.stringify(body?.error)}`);
-        expect(response.ok).toBe(true);
 
         const content = JSON.parse(body.choices[0].message.content);
 
