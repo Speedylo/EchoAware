@@ -35,5 +35,15 @@
   },
 
   "permissions": ["storage", "activeTab", "scripting", "offscreen"],
-  "host_permissions": ["*://*.youtube.com/*"]
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "https://openrouter.ai/*",
+    "https://huggingface.co/*",
+    "https://*.huggingface.co/*",
+    "https://cdn-lfs.huggingface.co/*"
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
 }

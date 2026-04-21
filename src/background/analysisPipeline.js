@@ -35,7 +35,47 @@ async function ensureOffscreenDocument() {
   });
 }
 
-export async function runAnalysisPipeline(metadata) {
+// MV3 terminates idle service workers at ~30s. Model download + LLM call
+// routinely exceed that, so keep the worker alive for the pipeline's duration.
+function startKeepalive() {
+  if (typeof chrome?.runtime?.getPlatformInfo !== 'function') return () => {};
+  const id = setInterval(() => { chrome.runtime.getPlatformInfo().catch(() => {}); }, 20_000);
+  return () => clearInterval(id);
+}
+
+async function sendToOffscreen(message, label) {
+  try {
+    const response = await chrome.runtime.sendMessage(message);
+    if (response == null) {
+      console.error(`[EchoAware] ${label} returned no response`);
+      return null;
+    }
+    return response;
+  } catch (err) {
+    console.error(`[EchoAware] ${label} sendMessage failed:`, err);
+    return null;
+  }
+}
+
+// Serialize pipeline runs so concurrent VIDEO_NAVIGATED messages don't race
+// on SESSION_STATE writes. Each caller still sees its own promise resolve.
+let _queueTail = Promise.resolve();
+export function runAnalysisPipeline(metadata) {
+  const next = _queueTail.then(() => _run(metadata));
+  _queueTail = next.catch(() => {}); // tail swallows errors so queue never stalls
+  return next;
+}
+
+async function _run(metadata) {
+  const stopKeepalive = startKeepalive();
+  try {
+    await _runInner(metadata);
+  } finally {
+    stopKeepalive();
+  }
+}
+
+async function _runInner(metadata) {
   const [storage, sessionId] = await Promise.all([
     getStorageManager(),
     getOrCreateSessionId(),
@@ -57,13 +97,17 @@ export async function runAnalysisPipeline(metadata) {
 
   await ensureOffscreenDocument();
 
-  // Embed title + channel name for richer signal
-  const embeddingText = [metadata.title, metadata.channelName].filter(Boolean).join(' ');
-  const embedding = await chrome.runtime.sendMessage({
+  // Title only: channel names inject cross-topic noise that splits topically-similar videos.
+  const embedding = await sendToOffscreen({
     target: 'offscreen',
     type: MSG_EMBED_REQUEST,
-    payload: { text: embeddingText },
-  });
+    payload: { text: metadata.title ?? '' },
+  }, 'embed');
+
+  if (!Array.isArray(embedding) || embedding.length === 0) {
+    // Leave the preliminary entry in place so the next navigation retries.
+    return;
+  }
 
   await storage.putVideoEntry({
     videoUrl: metadata.url,
@@ -90,13 +134,14 @@ export async function runAnalysisPipeline(metadata) {
     return;
   }
 
-  // Run HDBSCAN clustering via offscreen document
   const embeddings = embeddedVideos.map(v => Array.from(v.embedding));
-  const clusterAssignments = await chrome.runtime.sendMessage({
+  const clusterAssignments = await sendToOffscreen({
     target: 'offscreen',
     type: MSG_CLUSTER_REQUEST,
     payload: { embeddings },
-  });
+  }, 'cluster');
+
+  if (!Array.isArray(clusterAssignments) || clusterAssignments.length === 0) return;
 
   // Write cluster IDs back to storage
   await Promise.all(

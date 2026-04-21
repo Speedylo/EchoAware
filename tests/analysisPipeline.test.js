@@ -164,7 +164,7 @@ describe('runAnalysisPipeline — calibration phase (< 5 videos)', () => {
     expect(chrome.offscreen.createDocument).toHaveBeenCalledOnce();
   });
 
-  it('requests an embedding for title + channelName', async () => {
+  it('requests an embedding for the title only', async () => {
     buildChromeMock();
     await runAnalysisPipeline(makeMetadata('v0'));
 
@@ -173,7 +173,7 @@ describe('runAnalysisPipeline — calibration phase (< 5 videos)', () => {
     );
     expect(embedCall).toBeDefined();
     expect(embedCall[0].payload.text).toContain('Video v0');
-    expect(embedCall[0].payload.text).toContain('Test Channel');
+    expect(embedCall[0].payload.text).not.toContain('Test Channel');
   });
 
   it('persists the video entry with the returned embedding', async () => {

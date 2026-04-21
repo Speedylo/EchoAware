@@ -1,7 +1,7 @@
 import { CONFIG_STORE_KEY } from '../shared/constants.js';
 
 export const DEFAULTS = {
-  thresholdD: 0.6,
+  thresholdD: 0.7,
   minVideos: 5,
   windowDays: 14,
   inferenceEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
