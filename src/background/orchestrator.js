@@ -23,8 +23,31 @@ export async function triggerBadgeAlert(score) {
   }
 }
 
+// Turn an OpenRouter error payload into a short user-facing reason.
+// Why: the raw body is JSON with nested fields that nobody can read in a popup.
+function friendlyOpenRouterError(status, rawBody) {
+  let parsed;
+  try { parsed = JSON.parse(rawBody); } catch { parsed = null; }
+  const message = parsed?.error?.message ?? parsed?.message ?? rawBody ?? '';
+
+  if (status === 429 || /rate.?limit/i.test(message)) {
+    return 'Rate limit reached — free-tier daily quota exhausted. Try again tomorrow or add credits to your OpenRouter account.';
+  }
+  if (status === 401 || status === 403) {
+    return 'OpenRouter rejected the API key. Check that it is valid in the extension settings.';
+  }
+  if (status >= 500) {
+    return 'OpenRouter service error — please try again in a moment.';
+  }
+  return message ? `OpenRouter error: ${message}` : `OpenRouter returned HTTP ${status}.`;
+}
+
 export async function callOpenRouter(representativeTitles) {
   const config = await getConfig();
+  if (!config.openRouterApiKey) {
+    throw new Error('No OpenRouter API key configured. Set one in the extension settings.');
+  }
+
   const response = await fetch(config.inferenceEndpoint, {
     method: 'POST',
     headers: {
@@ -54,7 +77,17 @@ export async function callOpenRouter(representativeTitles) {
     }),
   });
 
-  if (!response.ok) throw new Error(`OpenRouter ${response.status}: ${await response.text()}`);
+  if (!response.ok) {
+    throw new Error(friendlyOpenRouterError(response.status, await response.text()));
+  }
   const body = await response.json();
-  return JSON.parse(body.choices[0].message.content);
+  const content = body?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('OpenRouter returned an empty response.');
+  try {
+    return JSON.parse(content);
+  } catch {
+    // Some models wrap JSON in ```json fences despite instructions — strip and retry once.
+    const stripped = content.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+    return JSON.parse(stripped);
+  }
 }
