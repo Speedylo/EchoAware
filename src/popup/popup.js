@@ -71,13 +71,17 @@ export function renderAlert(state, representativeTitles = []) {
 
   const dominant = state.clusters?.find(c => c.isDominant);
   const enriching = state.enrichmentStatus === 'enriching';
+  const enrichingStale = enriching && state.enrichmentStartedAt
+    && (Date.now() - state.enrichmentStartedAt > 90_000);
   const errored = state.enrichmentStatus === 'error';
 
   const topicLabelEl = document.getElementById('topic-label');
   if (topicLabelEl) {
-    topicLabelEl.textContent = enriching
-      ? 'Analysing...'
-      : (dominant?.topicLabel || 'Echo chamber detected');
+    topicLabelEl.textContent = enrichingStale
+      ? 'Analysis timed out'
+      : enriching
+        ? 'Analysing...'
+        : (dominant?.topicLabel || 'Echo chamber detected');
   }
 
   const titlesList = document.getElementById('representative-titles');
@@ -101,8 +105,8 @@ export function renderAlert(state, representativeTitles = []) {
   const breakBtn = document.getElementById('break-bubble-btn');
   if (breakBtn) {
     breakBtn.hidden = _bubbleBroken;
-    breakBtn.disabled = enriching;
-    breakBtn.textContent = enriching ? 'Analysing…' : 'Break the bubble';
+    breakBtn.disabled = enriching && !enrichingStale;
+    breakBtn.textContent = (enriching && !enrichingStale) ? 'Analysing…' : 'Break the bubble';
   }
 
   // Queries wrap: hidden until the user clicks the button.
@@ -117,7 +121,9 @@ export function renderAlert(state, representativeTitles = []) {
     if (queries.length === 0) {
       const li = document.createElement('li');
       li.className = 'escape-unavailable';
-      if (enriching) {
+      if (enrichingStale) {
+        li.textContent = 'Analysis did not complete — watch another video to retry.';
+      } else if (enriching) {
         li.textContent = 'Suggestions are being generated…';
       } else if (errored) {
         li.textContent = state.enrichmentError || 'Suggestions unavailable — enrichment failed.';

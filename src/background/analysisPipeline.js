@@ -204,7 +204,9 @@ async function _runInner(metadata) {
     await storage.putSessionState({
       sessionId, diversityScore: score, alertState,
       calibrationPhase: false, enrichmentStatus, enrichmentError: null, clusters,
+      enrichmentStartedAt: Date.now(),
     });
+    chrome.runtime.sendMessage({ type: MSG_STATE_UPDATED }).catch(() => {});
 
     const dominantIndices = new Set(
       clusterAssignments.filter(a => a.clusterId === dominantClusterId).map(a => a.videoIndex)

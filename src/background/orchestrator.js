@@ -48,34 +48,48 @@ export async function callOpenRouter(representativeTitles) {
     throw new Error('No OpenRouter API key configured. Set one in the extension settings.');
   }
 
-  const response = await fetch(config.inferenceEndpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.openRouterApiKey}`,
-      'HTTP-Referer': 'chrome-extension://echoaware',
-      'X-Title': 'EchoAware',
-    },
-    body: JSON.stringify({
-      models: [config.chatModel, 'openrouter/free'],
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You detect echo chambers in YouTube viewing patterns and suggest diverse alternative content. Always reply with valid JSON only.',
-        },
-        {
-          role: 'user',
-          content:
-            `I keep watching videos about these topics: ${representativeTitles.join(', ')}. ` +
-            'Identify the main topic and give me 3 search queries to diversify my feed. ' +
-            'Reply in this exact JSON shape: ' +
-            '{"topicLabel":"...", "escapeQueries":[{"queryText":"..."},{"queryText":"..."},{"queryText":"..."}]}',
-        },
-      ],
-      response_format: { type: 'json_object' },
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
+  let response;
+  try {
+    response = await fetch(config.inferenceEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.openRouterApiKey}`,
+        'HTTP-Referer': 'chrome-extension://echoaware',
+        'X-Title': 'EchoAware',
+      },
+      body: JSON.stringify({
+        models: [config.chatModel, 'openrouter/free'],
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You detect echo chambers in YouTube viewing patterns and suggest diverse alternative content. Always reply with valid JSON only.',
+          },
+          {
+            role: 'user',
+            content:
+              `I keep watching videos about these topics: ${representativeTitles.join(', ')}. ` +
+              'Identify the main topic and give me 3 search queries to diversify my feed. ' +
+              'Reply in this exact JSON shape: ' +
+              '{"topicLabel":"...", "escapeQueries":[{"queryText":"..."},{"queryText":"..."},{"queryText":"..."}]}',
+          },
+        ],
+        response_format: { type: 'json_object' },
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('OpenRouter request timed out — the service took too long to respond.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     throw new Error(friendlyOpenRouterError(response.status, await response.text()));
