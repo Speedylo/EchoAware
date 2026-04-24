@@ -140,7 +140,7 @@ describe('callOpenRouter (unit)', () => {
       text: async () => 'Unauthorized',
     }));
 
-    await expect(callOpenRouter(['Video A'])).rejects.toThrow('401');
+    await expect(callOpenRouter(['Video A'])).rejects.toThrow(/API key|OpenRouter/i);
   });
 });
 
@@ -190,7 +190,16 @@ describe.skipIf(!OPENROUTER_API_KEY)(
         }
 
         const body = await response.json();
-        if (!response.ok) throw new Error(`OpenRouter error: ${JSON.stringify(body?.error)}`);
+        if (!response.ok) {
+          // Skip (not fail) on out-of-band conditions we can't control locally:
+          //   429 — free-tier daily quota exhausted
+          //   5xx — upstream provider timeout / outage (e.g. provider_name: Venice)
+          if (response.status === 429 || response.status >= 500) {
+            ctx.skip();
+            return;
+          }
+          throw new Error(`OpenRouter error: ${JSON.stringify(body?.error)}`);
+        }
 
         const content = JSON.parse(body.choices[0].message.content);
 

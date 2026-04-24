@@ -30,7 +30,10 @@ function setupDOM() {
         <p id="alert-score"></p>
         <p id="topic-label">Analysing...</p>
         <ul id="representative-titles" hidden></ul>
-        <ul id="escape-queries"></ul>
+        <button id="break-bubble-btn" class="break-btn">Break the bubble</button>
+        <div id="escape-queries-wrap" hidden>
+          <ul id="escape-queries"></ul>
+        </div>
       </div>
     </div>
   `;
@@ -177,30 +180,23 @@ describe('renderAlert — escape queries', () => {
     expect(document.querySelectorAll('.escape-query')).toHaveLength(3);
   });
 
-  it('each item has query text and a Copy button', () => {
+  it('each item has query text and a Search button', () => {
     renderAlert(BASE_ALERT_STATE);
     const first = document.querySelector('.escape-query');
     expect(first.querySelector('.query-text').textContent).toBe('nature documentaries');
-    expect(first.querySelector('.copy-btn').textContent).toBe('Copy');
+    expect(first.querySelector('.search-btn').textContent).toBe('Search');
   });
 
-  it('shows "Copied!" and adds .copied class for a pre-copied query', () => {
-    const state = {
-      ...BASE_ALERT_STATE,
-      clusters: [{
-        ...BASE_ALERT_STATE.clusters[0],
-        escapeQueries: [{ queryId: 'q1', queryText: 'nature docs', isCopied: true }],
-      }],
-    };
-    renderAlert(state);
-    const btn = document.querySelector('.copy-btn');
-    expect(btn.textContent).toBe('Copied!');
-    expect(btn.classList.contains('copied')).toBe(true);
+  it('keeps the queries wrap hidden until Break-the-bubble is clicked', () => {
+    renderAlert(BASE_ALERT_STATE);
+    expect(document.getElementById('escape-queries-wrap').hidden).toBe(true);
   });
 
-  it('renders no query items while enriching', () => {
+  it('shows "Analysing…" on the Break-the-bubble button while enriching', () => {
     renderAlert({ ...BASE_ALERT_STATE, enrichmentStatus: 'enriching' });
-    expect(document.querySelectorAll('.escape-query')).toHaveLength(0);
+    const btn = document.getElementById('break-bubble-btn');
+    expect(btn.textContent).toBe('Analysing…');
+    expect(btn.disabled).toBe(true);
   });
 
   it('shows the unavailable message when escape queries are empty', () => {
@@ -212,6 +208,19 @@ describe('renderAlert — escape queries', () => {
     const msg = document.querySelector('.escape-unavailable');
     expect(msg).not.toBeNull();
     expect(msg.textContent).toContain('unavailable');
+  });
+
+  it('shows the enrichment error message when enrichment failed', () => {
+    const state = {
+      ...BASE_ALERT_STATE,
+      enrichmentStatus: 'error',
+      enrichmentError: 'Rate limit reached — free-tier daily quota exhausted.',
+      clusters: [{ ...BASE_ALERT_STATE.clusters[0], escapeQueries: [] }],
+    };
+    renderAlert(state);
+    const msg = document.querySelector('.escape-unavailable');
+    expect(msg).not.toBeNull();
+    expect(msg.textContent).toContain('Rate limit reached');
   });
 
   it('shows unavailable message when there are no clusters', () => {
@@ -249,36 +258,66 @@ describe('renderAlert — representative titles', () => {
   });
 });
 
-// ── Copy button interaction ───────────────────────────────────────────────────
+// ── Search button interaction ─────────────────────────────────────────────────
 
-describe('copy button', () => {
+describe('search button', () => {
+  let tabsUpdate;
+  let tabsCreate;
+  let closeSpy;
+
   beforeEach(() => {
     setupDOM();
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn().mockResolvedValue(undefined) },
-      writable: true,
-      configurable: true,
+    tabsUpdate = vi.fn();
+    tabsCreate = vi.fn();
+    vi.stubGlobal('chrome', {
+      storage: { local: { get: vi.fn(), set: vi.fn((_d, cb) => cb?.()) } },
+      runtime: { onMessage: { addListener: vi.fn() }, sendMessage: vi.fn() },
+      tabs: {
+        query: vi.fn().mockResolvedValue([{ id: 42 }]),
+        update: tabsUpdate,
+        create: tabsCreate,
+      },
     });
+    closeSpy = vi.spyOn(window, 'close').mockImplementation(() => {});
   });
 
-  it('writes the query text to the clipboard on click', async () => {
+  it('opens a YouTube search in the active tab on click', async () => {
     renderAlert(BASE_ALERT_STATE);
-    document.querySelector('.copy-btn').click();
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('nature documentaries');
+    document.querySelector('.search-btn').click();
+    await vi.waitFor(() => expect(tabsUpdate).toHaveBeenCalled());
+    const [tabId, opts] = tabsUpdate.mock.calls[0];
+    expect(tabId).toBe(42);
+    expect(opts.url).toBe('https://www.youtube.com/results?search_query=nature%20documentaries');
   });
 
-  it('updates button text to "Copied!" after click', async () => {
+  it('falls back to creating a new tab when no active tab is found', async () => {
+    chrome.tabs.query.mockResolvedValueOnce([]);
     renderAlert(BASE_ALERT_STATE);
-    const btn = document.querySelector('.copy-btn');
-    btn.click();
-    await vi.waitFor(() => expect(btn.textContent).toBe('Copied!'));
+    document.querySelector('.search-btn').click();
+    await vi.waitFor(() => expect(tabsCreate).toHaveBeenCalled());
+    expect(tabsCreate.mock.calls[0][0].url).toContain('search_query=nature%20documentaries');
+    expect(tabsUpdate).not.toHaveBeenCalled();
   });
 
-  it('adds the .copied class to the button after click', async () => {
+  it('closes the popup after navigating', async () => {
     renderAlert(BASE_ALERT_STATE);
-    const btn = document.querySelector('.copy-btn');
-    btn.click();
-    await vi.waitFor(() => expect(btn.classList.contains('copied')).toBe(true));
+    document.querySelector('.search-btn').click();
+    await vi.waitFor(() => expect(closeSpy).toHaveBeenCalled());
+  });
+
+  it('encodes special characters in the query', async () => {
+    const state = {
+      ...BASE_ALERT_STATE,
+      clusters: [{
+        ...BASE_ALERT_STATE.clusters[0],
+        escapeQueries: [{ queryId: 'q1', queryText: 'q & a forums', isCopied: false }],
+      }],
+    };
+    renderAlert(state);
+    document.querySelector('.search-btn').click();
+    await vi.waitFor(() => expect(tabsUpdate).toHaveBeenCalled());
+    expect(tabsUpdate.mock.calls[0][1].url)
+      .toBe('https://www.youtube.com/results?search_query=q%20%26%20a%20forums');
   });
 });
 

@@ -6,5 +6,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   runAnalysisPipeline(message.payload)
     .then(() => sendResponse({ ok: true }))
     .catch((err) => sendResponse({ ok: false, error: err?.message ?? String(err) }));
-  return true; // async response
+  return true;
 });

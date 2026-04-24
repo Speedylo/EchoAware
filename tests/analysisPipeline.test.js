@@ -301,6 +301,7 @@ describe('runAnalysisPipeline — alert state (score < threshold)', () => {
 
     const state = await storage.getSessionState('test-session-1');
     expect(state.alertState).toBe('alert');
-    expect(state.enrichmentStatus).toBe('done');
+    expect(state.enrichmentStatus).toBe('error');
+    expect(state.enrichmentError).toBe('API unavailable');
   });
 });
