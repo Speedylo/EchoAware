@@ -26,7 +26,7 @@ vi.mock('../src/storage/configStore.js', () => ({
   getConfig: vi.fn().mockResolvedValue({
     thresholdD: 0.6,
     inferenceEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
-    chatModel: 'openrouter/free',
+    chatModel: 'openai/gpt-oss-120b:free',
     openRouterApiKey: 'test-key',
   }),
 }));

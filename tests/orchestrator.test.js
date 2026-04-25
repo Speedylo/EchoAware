@@ -23,7 +23,7 @@ vi.mock('../src/storage/configStore.js', () => ({
   getConfig: vi.fn().mockResolvedValue({
     thresholdD: 0.6,
     inferenceEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
-    chatModel: 'openrouter/free',
+    chatModel: 'openai/gpt-oss-120b:free',
     openRouterApiKey: 'test-key',
   }),
 }));
@@ -126,8 +126,7 @@ describe('callOpenRouter (unit)', () => {
     await callOpenRouter(titles);
 
     const body = JSON.parse(fetch.mock.calls[0][1].body);
-    expect(body.models[0]).toBe('openrouter/free');  // default chatModel
-    expect(body.models[1]).toBe('openrouter/free');  // explicit fallback
+    expect(body.model).toBe('openai/gpt-oss-120b:free');  // default chatModel
     const userMessage = body.messages.find(m => m.role === 'user').content;
     expect(userMessage).toContain('Video about cats');
     expect(userMessage).toContain('More cat content');
@@ -166,7 +165,7 @@ describe.skipIf(!OPENROUTER_API_KEY)(
               'X-Title': 'EchoAware',
             },
             body: JSON.stringify({
-              model: 'openrouter/free',
+              model: 'openai/gpt-oss-120b:free',
               messages: [
                 {
                   role: 'system',
