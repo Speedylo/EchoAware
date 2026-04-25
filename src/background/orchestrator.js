@@ -18,6 +18,9 @@ export async function triggerBadgeAlert(score) {
   if (score < config.thresholdD) {
     chrome.action.setBadgeText({ text: '!' });
     chrome.action.setBadgeBackgroundColor({ color: '#E53935' });
+  } else if (Math.round(score * 100) < 80) {
+    chrome.action.setBadgeText({ text: '~' });
+    chrome.action.setBadgeBackgroundColor({ color: '#F9A825' });
   } else {
     chrome.action.setBadgeText({ text: '' });
   }

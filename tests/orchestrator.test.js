@@ -66,8 +66,20 @@ describe('triggerBadgeAlert', () => {
     expect(mockSetBadgeText).toHaveBeenCalledWith({ text: '!' });
   });
 
-  it('clears badge at exactly the 0.6 threshold (boundary — healthy)', async () => {
+  it('shows a yellow ~ badge at exactly the 0.6 threshold (boundary — borderline)', async () => {
     await triggerBadgeAlert(0.6);
+    expect(mockSetBadgeText).toHaveBeenCalledWith({ text: '~' });
+    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#F9A825' });
+  });
+
+  it('shows a yellow ~ badge for a borderline score (e.g. 75%)', async () => {
+    await triggerBadgeAlert(0.75);
+    expect(mockSetBadgeText).toHaveBeenCalledWith({ text: '~' });
+    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#F9A825' });
+  });
+
+  it('clears badge at exactly 80% (boundary — healthy)', async () => {
+    await triggerBadgeAlert(0.8);
     expect(mockSetBadgeText).toHaveBeenCalledWith({ text: '' });
     expect(mockSetBadgeBackgroundColor).not.toHaveBeenCalled();
   });

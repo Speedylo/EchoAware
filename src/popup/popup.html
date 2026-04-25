@@ -1,28 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>EchoAware</title>
-    <link rel="stylesheet" href="popup.css" />
-  </head>
-  <body>
-    <div id="app">
-      <div id="state-calibrating" class="state" hidden>
-        <p class="calibrating-msg">Calibrating: <span id="video-count">0</span> / 5 videos watched</p>
-      </div>
-      <div id="state-healthy" class="state" hidden>
-        <p id="diversity-score"></p>
-      </div>
-      <div id="state-alert" class="state" hidden>
-        <p id="alert-score"></p>
-        <p id="topic-label">Analysing...</p>
-        <ul id="representative-titles" hidden></ul>
-        <button id="break-bubble-btn" class="break-btn">Break the bubble</button>
-        <div id="escape-queries-wrap" hidden>
-          <ul id="escape-queries"></ul>
-        </div>
-      </div>
-    </div>
-    <script type="module" src="../../dist/popup.js"></script>
-  </body>
+
+<head>
+	<meta charset="UTF-8" />
+	<title>EchoAware</title>
+	<link rel="stylesheet" href="popup.css" />
+</head>
+
+<body>
+	<div id="app">
+		<header class="app-header">EchoAware</header>
+
+		<div id="state-calibrating" class="state calibration-card" hidden>
+			<p class="calib-heading">Calibration phase</p>
+			<svg class="gauge" viewBox="0 0 120 120">
+				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+				<circle id="calib-arc" class="gauge-arc gauge-arc--calib" cx="60" cy="60" r="52"></circle>
+				<text class="gauge-label" x="60" y="68" text-anchor="middle">
+					<tspan id="calib-count">0</tspan>/5
+				</text>
+			</svg>
+			<p class="calib-sub"><span id="video-count">0</span> / 5 videos watched</p>
+		</div>
+
+		<div id="state-healthy" class="state" hidden>
+			<svg class="gauge" viewBox="0 0 120 120">
+				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+				<circle id="healthy-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
+				<text class="gauge-label" x="60" y="68" text-anchor="middle">
+					<tspan id="diversity-score">0%</tspan>
+				</text>
+			</svg>
+			<p class="score-caption">Diversity Score</p>
+			<span class="state-badge state-badge--healthy">Healthy</span>
+		</div>
+
+		<div id="state-borderline" class="state" hidden>
+			<svg class="gauge" viewBox="0 0 120 120">
+				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+				<circle id="borderline-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
+				<text class="gauge-label" x="60" y="68" text-anchor="middle">
+					<tspan id="borderline-score">0%</tspan>
+				</text>
+			</svg>
+			<p class="score-caption">Diversity Score</p>
+			<span class="state-badge state-badge--borderline">Borderline</span>
+		</div>
+
+		<div id="state-alert" class="state" hidden>
+			<svg class="gauge" viewBox="0 0 120 120">
+				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+				<circle id="alert-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
+				<text class="gauge-label" x="60" y="68" text-anchor="middle">
+					<tspan id="alert-score">0%</tspan>
+				</text>
+			</svg>
+			<p class="score-caption">Diversity Score</p>
+			<span class="state-badge state-badge--alert">Alert</span>
+			<p id="topic-label" class="topic-label">Analysing...</p>
+			<ul id="representative-titles" class="rep-titles" hidden></ul>
+			<button id="break-bubble-btn" class="break-btn">Break the bubble</button>
+			<div id="escape-queries-wrap" hidden>
+				<ul id="escape-queries"></ul>
+			</div>
+		</div>
+	</div>
+	<script type="module" src="../../dist/popup.js"></script>
+</body>
+
 </html>

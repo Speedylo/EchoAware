@@ -164,7 +164,8 @@ async function _runInner(metadata) {
 
   const config = await getConfig();
   const isAlert = !calibrating && score < config.thresholdD;
-  const alertState = calibrating ? 'calibrating' : isAlert ? 'alert' : 'healthy';
+  const isBorderline = !calibrating && !isAlert && Math.round(score * 100) < 80;
+  const alertState = calibrating ? 'calibrating' : isAlert ? 'alert' : isBorderline ? 'borderline' : 'healthy';
 
   const dominantClusterId = clusterSizes.reduce(
     (best, c) => c.size > (best?.size ?? -1) ? c : best, null

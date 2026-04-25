@@ -84,8 +84,6 @@ function makeMetadata(id) {
   return {
     url: `https://www.youtube.com/watch?v=${id}`,
     title: `Video ${id}`,
-    channelName: 'Test Channel',
-    description: '',
   };
 }
 
@@ -227,6 +225,50 @@ describe('runAnalysisPipeline — healthy state (score ≥ threshold)', () => {
     });
     const state = await storage.getSessionState('test-session-1');
     expect(state.clusters.length).toBeGreaterThan(0);
+  });
+});
+
+describe('runAnalysisPipeline — borderline state (threshold ≤ score < 0.8)', () => {
+  let storage;
+
+  beforeEach(async () => {
+    storage = await freshStorage();
+    vi.clearAllMocks();
+  });
+
+  it('transitions to borderline with 3 clusters sized [2,2,1] (D ≈ 0.64)', async () => {
+    // clusters 0,0,1,1,2 → sizes [2,2,1] → D = 1 - (0.16+0.16+0.04) = 0.64
+    await seedVideos(5, {
+      clusterAssignmentFn: (embs) => embs.map((_, i) => ({
+        videoIndex: i,
+        clusterId: i < 2 ? 0 : i < 4 ? 1 : 2,
+      })),
+    });
+
+    const state = await storage.getSessionState('test-session-1');
+    expect(state.alertState).toBe('borderline');
+    expect(state.diversityScore).toBeCloseTo(0.64, 5);
+    expect(state.calibrationPhase).toBe(false);
+  });
+
+  it('does NOT call callOpenRouter when borderline', async () => {
+    await seedVideos(5, {
+      clusterAssignmentFn: (embs) => embs.map((_, i) => ({
+        videoIndex: i,
+        clusterId: i < 2 ? 0 : i < 4 ? 1 : 2,
+      })),
+    });
+    expect(callOpenRouter).not.toHaveBeenCalled();
+  });
+
+  it('calls triggerBadgeAlert with the borderline score', async () => {
+    await seedVideos(5, {
+      clusterAssignmentFn: (embs) => embs.map((_, i) => ({
+        videoIndex: i,
+        clusterId: i < 2 ? 0 : i < 4 ? 1 : 2,
+      })),
+    });
+    expect(triggerBadgeAlert).toHaveBeenCalledWith(expect.closeTo(0.64, 5));
   });
 });
 

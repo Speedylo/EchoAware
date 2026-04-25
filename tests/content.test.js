@@ -97,34 +97,24 @@ describe('urlDetector.init', () => {
 // ── metadataScraper ───────────────────────────────────────────────────────────
 
 describe('scrapeMetadata', () => {
-  it('returns title, channelName, and description from DOM elements', async () => {
+  it('returns title from the DOM', async () => {
     document.body.innerHTML = `
       <h1 class="ytd-watch-metadata">
         <yt-formatted-string>My Video Title</yt-formatted-string>
       </h1>
-      <ytd-channel-name>
-        <yt-formatted-string id="text">Great Channel</yt-formatted-string>
-      </ytd-channel-name>
-      <div id="description-inline-expander">
-        <yt-attributed-string>Some description text</yt-attributed-string>
-      </div>
     `;
 
     const { scrapeMetadata } = await import('../src/content/metadataScraper.js');
     const result = scrapeMetadata();
 
     expect(result.title).toBe('My Video Title');
-    expect(result.channelName).toBe('Great Channel');
-    expect(result.description).toBe('Some description text');
   });
 
-  it('returns empty strings when elements are absent', async () => {
+  it('returns an empty title when the element is absent', async () => {
     document.body.innerHTML = '';
     const { scrapeMetadata } = await import('../src/content/metadataScraper.js');
     const result = scrapeMetadata();
 
     expect(result.title).toBe('');
-    expect(result.channelName).toBe('');
-    expect(result.description).toBe('');
   });
 });
