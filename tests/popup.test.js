@@ -11,7 +11,7 @@ vi.stubGlobal('chrome', {
   runtime: { onMessage: { addListener: vi.fn() }, sendMessage: vi.fn() },
 });
 
-import { renderCalibrating, renderHealthy, renderAlert, render } from '../src/popup/popup.js';
+import { renderCalibrating, renderHealthy, renderBorderline, renderAlert, render } from '../src/popup/popup.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -42,6 +42,17 @@ function setupDOM() {
         </svg>
         <p class="score-caption">Diversity Score</p>
         <span class="state-badge state-badge--healthy">Healthy</span>
+      </div>
+      <div id="state-borderline" class="state">
+        <svg class="gauge" viewBox="0 0 120 120">
+          <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+          <circle id="borderline-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
+          <text class="gauge-label" x="60" y="68" text-anchor="middle">
+            <tspan id="borderline-score">0%</tspan>
+          </text>
+        </svg>
+        <p class="score-caption">Diversity Score</p>
+        <span class="state-badge state-badge--borderline">Borderline</span>
       </div>
       <div id="state-alert" class="state">
         <svg class="gauge" viewBox="0 0 120 120">
@@ -178,6 +189,45 @@ describe('renderHealthy', () => {
   it('hides calibrating and alert panels', () => {
     renderHealthy(0.75);
     expect(document.getElementById('state-calibrating').classList.contains('active')).toBe(false);
+    expect(document.getElementById('state-alert').classList.contains('active')).toBe(false);
+  });
+});
+
+// ── renderBorderline ──────────────────────────────────────────────────────────
+
+describe('renderBorderline', () => {
+  beforeEach(setupDOM);
+
+  it('makes the borderline panel active', () => {
+    renderBorderline(0.75);
+    expect(document.getElementById('state-borderline').classList.contains('active')).toBe(true);
+  });
+
+  it('displays the score as a rounded percentage', () => {
+    renderBorderline(0.75);
+    expect(document.getElementById('borderline-score').textContent).toBe('75%');
+  });
+
+  it('rounds fractional percentages', () => {
+    renderBorderline(0.756);
+    expect(document.getElementById('borderline-score').textContent).toBe('76%');
+  });
+
+  it('paints the gauge arc yellow for scores in the 70-80% band', () => {
+    renderBorderline(0.75);
+    expect(document.getElementById('borderline-arc').style.stroke).toBe('rgb(249, 168, 37)');
+  });
+
+  it('shows the "Borderline" state badge', () => {
+    renderBorderline(0.75);
+    const badge = document.querySelector('#state-borderline .state-badge');
+    expect(badge.textContent).toBe('Borderline');
+  });
+
+  it('hides calibrating, healthy, and alert panels', () => {
+    renderBorderline(0.75);
+    expect(document.getElementById('state-calibrating').classList.contains('active')).toBe(false);
+    expect(document.getElementById('state-healthy').classList.contains('active')).toBe(false);
     expect(document.getElementById('state-alert').classList.contains('active')).toBe(false);
   });
 });
@@ -452,6 +502,22 @@ describe('render() — integration', () => {
     await render();
     expect(document.getElementById('state-healthy').classList.contains('active')).toBe(true);
     expect(document.getElementById('diversity-score').textContent).toBe('80%');
+  });
+
+  it('shows the borderline panel for alertState borderline', async () => {
+    mockChromeSession(SESSION_ID);
+    await storage.putSessionState({
+      sessionId: SESSION_ID,
+      diversityScore: 0.75,
+      alertState: 'borderline',
+      calibrationPhase: false,
+      enrichmentStatus: 'idle',
+      clusters: [],
+    });
+    await render();
+    expect(document.getElementById('state-borderline').classList.contains('active')).toBe(true);
+    expect(document.getElementById('borderline-score').textContent).toBe('75%');
+    expect(document.getElementById('state-healthy').classList.contains('active')).toBe(false);
   });
 
   it('shows the alert panel with topic label', async () => {

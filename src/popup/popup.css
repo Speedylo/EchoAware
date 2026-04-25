@@ -6,6 +6,8 @@
   --red-bg: #FFEBEE;
   --red-text: #C62828;
   --yellow: #F9A825;
+  --yellow-bg: #FFF8E1;
+  --yellow-text: #E65100;
   --green: #2E7D32;
   --green-bg: #E8F5E9;
   --green-hover: #1B5E20;
@@ -57,8 +59,9 @@ body { width: 320px; min-height: 200px; font-family: system-ui, sans-serif; padd
   display: inline-block; margin-top: 8px; padding: 3px 14px;
   border-radius: 999px; font-size: 12px; font-weight: 600;
 }
-.state-badge--healthy { background: var(--green-bg); color: var(--green); }
-.state-badge--alert   { background: var(--red-bg);   color: var(--red-text); }
+.state-badge--healthy    { background: var(--green-bg);  color: var(--green); }
+.state-badge--borderline { background: var(--yellow-bg); color: var(--yellow-text); }
+.state-badge--alert      { background: var(--red-bg);    color: var(--red-text); }
 
 /* Alert layout */
 .topic-label { font-size: 15px; font-weight: 600; color: var(--text-strong); margin: 12px 0 8px; }

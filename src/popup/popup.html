@@ -35,6 +35,18 @@
 			<span class="state-badge state-badge--healthy">Healthy</span>
 		</div>
 
+		<div id="state-borderline" class="state" hidden>
+			<svg class="gauge" viewBox="0 0 120 120">
+				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+				<circle id="borderline-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
+				<text class="gauge-label" x="60" y="68" text-anchor="middle">
+					<tspan id="borderline-score">0%</tspan>
+				</text>
+			</svg>
+			<p class="score-caption">Diversity Score</p>
+			<span class="state-badge state-badge--borderline">Borderline</span>
+		</div>
+
 		<div id="state-alert" class="state" hidden>
 			<svg class="gauge" viewBox="0 0 120 120">
 				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>

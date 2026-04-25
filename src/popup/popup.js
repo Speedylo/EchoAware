@@ -8,8 +8,9 @@ const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 52;
 // Discrete bands rather than a smooth lerp: anything below 70% reads as red
 // (echo chamber territory), 70–80% as yellow (mediocre), 80%+ as green.
 function getScoreColor(score) {
-  if (score < 0.7) return '#E53935';
-  if (score < 0.8) return '#F9A825';
+  const pct = Math.round(score * 100);
+  if (pct < 70) return '#E53935';
+  if (pct < 80) return '#F9A825';
   return '#2E7D32';
 }
 
@@ -83,6 +84,14 @@ export function renderHealthy(score) {
   if (el) el.textContent = `${pct}%`;
   setGaugeArc(document.getElementById('healthy-arc'), score, getScoreColor(score));
   showState('state-healthy');
+}
+
+export function renderBorderline(score) {
+  const pct = Math.round(score * 100);
+  const el = document.getElementById('borderline-score');
+  if (el) el.textContent = `${pct}%`;
+  setGaugeArc(document.getElementById('borderline-arc'), score, getScoreColor(score));
+  showState('state-borderline');
 }
 
 export function renderAlert(state, representativeTitles = []) {
@@ -222,6 +231,11 @@ export async function render() {
       ? allVideos.filter(v => v.clusterId === dominantClusterId)
       : [];
     renderAlert(fullState, pickRepresentativeTitles(dominantVideos));
+    return;
+  }
+
+  if (fullState.alertState === 'borderline') {
+    renderBorderline(fullState.diversityScore);
     return;
   }
 
