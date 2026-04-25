@@ -3,6 +3,23 @@ import { MSG_STATE_UPDATED } from '../shared/messageTypes.js';
 
 const SESSION_ID_KEY = 'echoaware_session_id';
 const REPRESENTATIVE_TITLE_COUNT = 3;
+const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 52;
+
+// Discrete bands rather than a smooth lerp: anything below 70% reads as red
+// (echo chamber territory), 70–80% as yellow (mediocre), 80%+ as green.
+function getScoreColor(score) {
+  if (score < 0.7) return '#E53935';
+  if (score < 0.8) return '#F9A825';
+  return '#2E7D32';
+}
+
+function setGaugeArc(arcEl, fraction, color) {
+  if (!arcEl) return;
+  const f = Math.max(0, Math.min(1, fraction));
+  arcEl.style.strokeDasharray = String(GAUGE_CIRCUMFERENCE);
+  arcEl.style.strokeDashoffset = String(GAUGE_CIRCUMFERENCE * (1 - f));
+  if (color) arcEl.style.stroke = color;
+}
 
 // Pick the k videos closest to the cluster centroid — the most prototypical
 // members of the echo chamber. Falls back to first-k when embeddings are missing.
@@ -54,20 +71,29 @@ function showState(stateId) {
 export function renderCalibrating(videoCount) {
   const counter = document.getElementById('video-count');
   if (counter) counter.textContent = videoCount;
+  const calibCount = document.getElementById('calib-count');
+  if (calibCount) calibCount.textContent = videoCount;
+  setGaugeArc(document.getElementById('calib-arc'), Math.min(videoCount, 5) / 5);
   showState('state-calibrating');
 }
 
 export function renderHealthy(score) {
   const pct = Math.round(score * 100);
   const el = document.getElementById('diversity-score');
-  if (el) el.textContent = `Diversity score: ${pct}%`;
+  if (el) el.textContent = `${pct}%`;
+  setGaugeArc(document.getElementById('healthy-arc'), score, getScoreColor(score));
   showState('state-healthy');
 }
 
 export function renderAlert(state, representativeTitles = []) {
   const pct = Math.round(state.diversityScore * 100);
   const alertScoreEl = document.getElementById('alert-score');
-  if (alertScoreEl) alertScoreEl.textContent = `Diversity score: ${pct}%`;
+  if (alertScoreEl) alertScoreEl.textContent = `${pct}%`;
+  setGaugeArc(
+    document.getElementById('alert-arc'),
+    state.diversityScore,
+    getScoreColor(state.diversityScore),
+  );
 
   const dominant = state.clusters?.find(c => c.isDominant);
   const enriching = state.enrichmentStatus === 'enriching';

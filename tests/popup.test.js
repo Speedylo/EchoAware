@@ -20,16 +20,41 @@ const SESSION_ID = 'test-popup-session';
 function setupDOM() {
   document.body.innerHTML = `
     <div id="app">
-      <div id="state-calibrating" class="state">
-        <p>Calibrating: <span id="video-count">0</span> / 5 videos watched</p>
+      <header class="app-header">EchoAware</header>
+      <div id="state-calibrating" class="state calibration-card">
+        <p class="calib-heading">Calibration phase</p>
+        <svg class="gauge" viewBox="0 0 120 120">
+          <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+          <circle id="calib-arc" class="gauge-arc gauge-arc--calib" cx="60" cy="60" r="52"></circle>
+          <text class="gauge-label" x="60" y="68" text-anchor="middle">
+            <tspan id="calib-count">0</tspan>/5
+          </text>
+        </svg>
+        <p class="calib-sub"><span id="video-count">0</span> / 5 videos watched</p>
       </div>
       <div id="state-healthy" class="state">
-        <p id="diversity-score"></p>
+        <svg class="gauge" viewBox="0 0 120 120">
+          <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+          <circle id="healthy-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
+          <text class="gauge-label" x="60" y="68" text-anchor="middle">
+            <tspan id="diversity-score">0%</tspan>
+          </text>
+        </svg>
+        <p class="score-caption">Diversity Score</p>
+        <span class="state-badge state-badge--healthy">Healthy</span>
       </div>
       <div id="state-alert" class="state">
-        <p id="alert-score"></p>
-        <p id="topic-label">Analysing...</p>
-        <ul id="representative-titles" hidden></ul>
+        <svg class="gauge" viewBox="0 0 120 120">
+          <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+          <circle id="alert-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
+          <text class="gauge-label" x="60" y="68" text-anchor="middle">
+            <tspan id="alert-score">0%</tspan>
+          </text>
+        </svg>
+        <p class="score-caption">Diversity Score</p>
+        <span class="state-badge state-badge--alert">Alert</span>
+        <p id="topic-label" class="topic-label">Analysing...</p>
+        <ul id="representative-titles" class="rep-titles" hidden></ul>
         <button id="break-bubble-btn" class="break-btn">Break the bubble</button>
         <div id="escape-queries-wrap" hidden>
           <ul id="escape-queries"></ul>
@@ -86,6 +111,13 @@ describe('renderCalibrating', () => {
   it('updates the video count', () => {
     renderCalibrating(3);
     expect(document.getElementById('video-count').textContent).toBe('3');
+    expect(document.getElementById('calib-count').textContent).toBe('3');
+  });
+
+  it('fills the calibration gauge proportional to videos watched', () => {
+    renderCalibrating(3);
+    const arc = document.getElementById('calib-arc');
+    expect(arc.style.strokeDashoffset).not.toBe('');
   });
 
   it('hides healthy and alert panels', () => {
@@ -112,12 +144,35 @@ describe('renderHealthy', () => {
 
   it('displays the score as a rounded percentage', () => {
     renderHealthy(0.75);
-    expect(document.getElementById('diversity-score').textContent).toBe('Diversity score: 75%');
+    expect(document.getElementById('diversity-score').textContent).toBe('75%');
   });
 
   it('rounds fractional percentages', () => {
     renderHealthy(0.756);
-    expect(document.getElementById('diversity-score').textContent).toBe('Diversity score: 76%');
+    expect(document.getElementById('diversity-score').textContent).toBe('76%');
+  });
+
+  it('paints the gauge arc with a stroke color based on the score', () => {
+    renderHealthy(0.75);
+    const arc = document.getElementById('healthy-arc');
+    expect(arc.style.stroke).not.toBe('');
+    expect(arc.style.strokeDashoffset).not.toBe('');
+  });
+
+  it('shows yellow on the gauge for scores in the 70-80% band', () => {
+    renderHealthy(0.75);
+    expect(document.getElementById('healthy-arc').style.stroke).toBe('rgb(249, 168, 37)');
+  });
+
+  it('shows green on the gauge for scores >= 80%', () => {
+    renderHealthy(0.85);
+    expect(document.getElementById('healthy-arc').style.stroke).toBe('rgb(46, 125, 50)');
+  });
+
+  it('shows the "Healthy" state badge', () => {
+    renderHealthy(0.85);
+    const badge = document.querySelector('#state-healthy .state-badge');
+    expect(badge.textContent).toBe('Healthy');
   });
 
   it('hides calibrating and alert panels', () => {
@@ -139,13 +194,24 @@ describe('renderAlert — panel and score', () => {
 
   it('displays the diversity score', () => {
     renderAlert(BASE_ALERT_STATE);
-    expect(document.getElementById('alert-score').textContent).toBe('Diversity score: 20%');
+    expect(document.getElementById('alert-score').textContent).toBe('20%');
   });
 
   it('hides calibrating and healthy panels', () => {
     renderAlert(BASE_ALERT_STATE);
     expect(document.getElementById('state-calibrating').classList.contains('active')).toBe(false);
     expect(document.getElementById('state-healthy').classList.contains('active')).toBe(false);
+  });
+
+  it('paints the gauge red for low scores', () => {
+    renderAlert({ ...BASE_ALERT_STATE, diversityScore: 0.2 });
+    expect(document.getElementById('alert-arc').style.stroke).toBe('rgb(229, 57, 53)');
+  });
+
+  it('shows the "Alert" state badge', () => {
+    renderAlert(BASE_ALERT_STATE);
+    const badge = document.querySelector('#state-alert .state-badge');
+    expect(badge.textContent).toBe('Alert');
   });
 });
 
@@ -385,7 +451,7 @@ describe('render() — integration', () => {
     });
     await render();
     expect(document.getElementById('state-healthy').classList.contains('active')).toBe(true);
-    expect(document.getElementById('diversity-score').textContent).toBe('Diversity score: 80%');
+    expect(document.getElementById('diversity-score').textContent).toBe('80%');
   });
 
   it('shows the alert panel with topic label', async () => {
