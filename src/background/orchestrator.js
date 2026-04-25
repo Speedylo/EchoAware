@@ -62,7 +62,7 @@ export async function callOpenRouter(representativeTitles) {
         'X-Title': 'EchoAware',
       },
       body: JSON.stringify({
-        models: [config.chatModel, 'openrouter/free'],
+        model: config.chatModel,
         messages: [
           {
             role: 'system',
