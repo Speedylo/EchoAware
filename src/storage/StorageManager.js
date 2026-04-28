@@ -22,7 +22,7 @@ export class StorageManager {
   // ── VIDEO_ENTRY ──────────────────────────────────────────────────────────
 
   /**
-   * Upsert a video entry. `embedding` should be a Float32Array (384 floats).
+   * Insert a video entry. `embedding` should be a Float32Array (384 floats).
    * @param {{ videoUrl: string, title: string, embedding: Float32Array,
    *           watchedAt: number, clusterId: number|null, sessionId: string }} entry
    */

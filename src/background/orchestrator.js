@@ -1,20 +1,7 @@
-import { MSG_VIDEO_NAVIGATED } from '../shared/messageTypes.js';
 import { getConfig } from '../storage/configStore.js';
 import { getStorageManager } from '../storage/StorageManager.js';
-import { runAnalysisPipeline } from './analysisPipeline.js';
 
 const SESSION_ID_KEY = 'echoaware_session_id';
-
-export async function handleMessage(message, sender, sendResponse) {
-  switch (message.type) {
-    case MSG_VIDEO_NAVIGATED:
-      await runAnalysisPipeline(message.payload);
-      sendResponse({ ok: true });
-      break;
-    default:
-      sendResponse({ ok: false, error: 'Unknown message type' });
-  }
-}
 
 export async function triggerBadgeAlert(score) {
   const config = await getConfig();
@@ -39,7 +26,7 @@ export async function triggerBadgeAlert(score) {
 // Re-applies the toolbar badge from the persisted session state.
 // Why: MV3 service workers are torn down at idle and the badge resets when the
 // extension is reloaded, so without this the alert cue silently disappears
-// until the user watches another video. Called on every SW startup.
+// until the user watches another video. Called on every Service Worker startup.
 export async function syncBadgeFromState() {
   const sessionId = await new Promise((resolve) => {
     chrome.storage.local.get(SESSION_ID_KEY, (r) => resolve(r[SESSION_ID_KEY] ?? null));
@@ -55,8 +42,7 @@ export async function syncBadgeFromState() {
   await triggerBadgeAlert(state.diversityScore);
 }
 
-// Turn an OpenRouter error payload into a short user-facing reason.
-// Why: the raw body is JSON with nested fields that nobody can read in a popup.
+// Display an appropriate message to the user when OpenRouter returns an error
 function friendlyOpenRouterError(status, rawBody) {
   let parsed;
   try { parsed = JSON.parse(rawBody); } catch { parsed = null; }

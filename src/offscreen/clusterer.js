@@ -2,7 +2,6 @@ import { ClusteringStrategy } from './clusteringStrategy.js';
 import { euclideanDistance } from '../shared/utils.js';
 
 // Threshold tuned for L2-normalized MiniLM embeddings.
-// euclidean ≈ sqrt(2 - 2·cos); 1.0 ≈ cosine similarity 0.5 — "related topic".
 const DISTANCE_THRESHOLD = 1.0;
 
 export class HDBSCANStrategy extends ClusteringStrategy {

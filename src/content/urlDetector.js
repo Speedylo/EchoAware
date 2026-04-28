@@ -20,7 +20,7 @@ export const urlDetector = {
     // (A → B → A) can be notified again for the second visit.
     window.addEventListener('yt-navigate-start', () => { _lastNotified = ''; });
 
-    // Primary signal: YouTube's SPA navigation complete event.
+    // Primary signal: YouTube navigation complete event.
     window.addEventListener('yt-navigate-finish', () => {
       maybeNotify(window.location.href);
     });

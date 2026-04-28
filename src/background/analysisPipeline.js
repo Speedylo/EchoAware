@@ -35,8 +35,7 @@ async function ensureOffscreenDocument() {
   });
 }
 
-// MV3 terminates idle service workers at ~30s. Model download + LLM call
-// routinely exceed that, so keep the worker alive for the pipeline's duration.
+// MV3 terminates idle service workers at ~30s. This is a keep alive function
 function startKeepalive() {
   if (typeof chrome?.runtime?.getPlatformInfo !== 'function') return () => {};
   const id = setInterval(() => { chrome.runtime.getPlatformInfo().catch(() => {}); }, 20_000);
@@ -82,7 +81,7 @@ async function _runInner(metadata) {
     getOrCreateSessionId(),
   ]);
 
-  // Deduplicate: skip if embedding already computed for this URL
+  // Skip if embedding already computed for this URL
   const existing = await storage.getVideoEntry(metadata.url);
   if (existing?.embedding) return;
 
@@ -98,7 +97,7 @@ async function _runInner(metadata) {
 
   await ensureOffscreenDocument();
 
-  // Title only: channel names inject cross-topic noise that splits topically-similar videos.
+  // Send Title only to offscreen document
   const embedding = await sendToOffscreen({
     target: 'offscreen',
     type: MSG_EMBED_REQUEST,
@@ -152,7 +151,7 @@ async function _runInner(metadata) {
     )
   );
 
-  // Compute cluster sizes (ignore noise cluster -1)
+  // Compute cluster sizes
   const sizeMap = new Map();
   for (const { clusterId } of clusterAssignments) {
     if (clusterId === -1) continue;
@@ -172,8 +171,8 @@ async function _runInner(metadata) {
     (best, c) => c.size > (best?.size ?? -1) ? c : best, null
   )?.clusterId ?? null;
 
-  // Carry enrichment forward from the previous run so we don't re-hit OpenRouter
-  // on every new video (which exhausts the 50/day free-tier quota almost instantly).
+  // Carry returned queries and label forward from the previous run so we don't re-hit OpenRouter
+  // on every new video, which exhausts the 50/day free-tier quota rapidly
   const prevState = await storage.getSessionState(sessionId);
   const prevByCluster = new Map(
     (prevState?.clusters ?? []).map(c => [c.clusterId, c])

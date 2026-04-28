@@ -1,7 +1,7 @@
 import { getStorageManager } from '../storage/StorageManager.js';
 import { MSG_STATE_UPDATED } from '../shared/messageTypes.js';
 
-// Ambient orb colors per state
+// Colors per state
 const orbColors = {
 	'state-calibrating': ['rgba(79,139,255,0.28)', 'rgba(99,102,241,0.18)'],
 	'state-healthy': ['rgba(52,211,153,0.22)', 'rgba(16,185,129,0.18)'],
@@ -13,16 +13,13 @@ const SESSION_ID_KEY = 'echoaware_session_id';
 const REPRESENTATIVE_TITLE_COUNT = 3;
 const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 52;
 
-// Normalise a model-returned query string to sentence case and strip trailing
-// punctuation — guards against all-caps, all-lowercase, or stray periods/commas
-// that some models return regardless of instructions.
+// Normalise the queries returned by OpenRouter by capitalizing the first letter and removing trailing punctuation
 function formatQuery(text) {
 	const t = text.trim().replace(/[.,;!?]+$/, '').trim();
 	return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-// Discrete bands rather than a smooth lerp: anything below 70% reads as red
-// (echo chamber territory), 70–80% as yellow (mediocre), 80%+ as green.
+// <70% red, 70%-79% yellow, 80%+ green
 function getScoreColor(score) {
 	const pct = Math.round(score * 100);
 	if (pct < 70) return 'var(--c-red)';
@@ -38,8 +35,7 @@ function setGaugeArc(arcEl, fraction, color) {
 	if (color) arcEl.style.stroke = color;
 }
 
-// Pick the k videos closest to the cluster centroid — the most prototypical
-// members of the echo chamber. Falls back to first-k when embeddings are missing.
+// Pick the k videos closest to the cluster centroid. These are the most representative title videos of the echo chamber. Falls back to first-k when embeddings are missing.
 function pickRepresentativeTitles(videos, k = REPRESENTATIVE_TITLE_COUNT) {
 	const withEmbedding = videos.filter(v => v.embedding && v.embedding.length > 0);
 	if (withEmbedding.length === 0) {
@@ -91,7 +87,7 @@ function showState(stateId) {
 		target.hidden = false;
 	}
 
-	// Update ambient orb colors
+	// Update state colors
 	const [c1, c2] = orbColors[stateId] || orbColors['state-healthy'];
 	document.body.style.setProperty('--orb-color', c1);
 	document.body.style.setProperty('--orb-color-2', c2);
@@ -175,12 +171,12 @@ export function renderAlert(state, representativeTitles = []) {
 		}
 	}
 
-	// Button: visible and enabled only while queries are still hidden and ready.
+	// "Break the Bubble" Button visible and enabled only while queries are still hidden and ready.
 	const breakBtn = document.getElementById('break-bubble-btn');
 	if (breakBtn) {
 		breakBtn.hidden = _bubbleBroken;
 		breakBtn.disabled = enriching && !enrichingStale;
-		breakBtn.textContent = (enriching && !enrichingStale) ? 'Analysing…' : '💥 Break the bubble';
+		breakBtn.textContent = (enriching && !enrichingStale) ? 'Analysing…' : 'Break the bubble';
 	}
 
 	// Queries wrap: hidden until the user clicks the button.
