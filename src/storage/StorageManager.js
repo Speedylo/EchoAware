@@ -22,7 +22,7 @@ export class StorageManager {
   // ── VIDEO_ENTRY ──────────────────────────────────────────────────────────
 
   /**
-   * Insert a video entry. `embedding` should be a Float32Array (384 floats).
+   * Upsert a video entry. `embedding` should be a Float32Array (384 floats).
    * @param {{ videoUrl: string, title: string, embedding: Float32Array,
    *           watchedAt: number, clusterId: number|null, sessionId: string }} entry
    */
@@ -37,22 +37,10 @@ export class StorageManager {
     return idbRequest(tx.objectStore(STORE_VIDEO_ENTRY).get(videoUrl));
   }
 
-  /** @returns {Promise<object[]>} */
-  async getAllVideoEntries() {
-    const tx = this._db.transaction(STORE_VIDEO_ENTRY, 'readonly');
-    return idbRequest(tx.objectStore(STORE_VIDEO_ENTRY).getAll());
-  }
-
   /** @param {string} sessionId @returns {Promise<object[]>} */
   async getVideoEntriesBySession(sessionId) {
     const tx = this._db.transaction(STORE_VIDEO_ENTRY, 'readonly');
     return idbRequest(tx.objectStore(STORE_VIDEO_ENTRY).index('sessionId').getAll(sessionId));
-  }
-
-  /** @param {string} videoUrl */
-  async deleteVideoEntry(videoUrl) {
-    const tx = this._db.transaction(STORE_VIDEO_ENTRY, 'readwrite');
-    await idbRequest(tx.objectStore(STORE_VIDEO_ENTRY).delete(videoUrl));
   }
 
   // ── SESSION_STATE ────────────────────────────────────────────────────────
@@ -75,33 +63,6 @@ export class StorageManager {
     return idbRequest(tx.objectStore(STORE_SESSION_STATE).get(sessionId));
   }
 
-  // ── Read-model projections (§5.6) ────────────────────────────────────────
-
-  /**
-   * UIState projection: fields consumed by the popup.
-   * @param {string} sessionId
-   * @returns {Promise<{diversityScore: number, alertState: string,
-   *   calibrationPhase: boolean, enrichmentStatus: string}|undefined>}
-   */
-  async getUIState(sessionId) {
-    const state = await this.getSessionState(sessionId);
-    if (!state) return undefined;
-    const { diversityScore, alertState, calibrationPhase, enrichmentStatus } = state;
-    return { diversityScore, alertState, calibrationPhase, enrichmentStatus };
-  }
-
-  /**
-   * PipelineState projection: fields consumed by the orchestrator and analysis pipeline.
-   * @param {string} sessionId
-   * @returns {Promise<{clusters: object[], watchedVideos: object[]}|undefined>}
-   */
-  async getPipelineState(sessionId) {
-    const state = await this.getSessionState(sessionId);
-    if (!state) return undefined;
-    const watchedVideos = await this.getVideoEntriesBySession(sessionId);
-    return { clusters: state.clusters ?? [], watchedVideos };
-  }
-
   // ── Housekeeping ─────────────────────────────────────────────────────────
 
   /** Clear all stores. Used in tests to isolate each case. */
@@ -114,7 +75,7 @@ export class StorageManager {
   }
 }
 
-// ── Module-level singleton (used by videoStore / sessionStore) ───────────────
+// ── Module-level singleton ───────────────────────────────────────────────────
 
 let _instance = null;
 

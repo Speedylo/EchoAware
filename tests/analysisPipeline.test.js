@@ -10,7 +10,6 @@ import {
 // ── Module mocks (hoisted by Vitest) ─────────────────────────────────────────
 
 vi.mock('../src/background/orchestrator.js', () => ({
-  handleMessage: vi.fn(),
   triggerBadgeAlert: vi.fn().mockResolvedValue(undefined),
   callOpenRouter: vi.fn().mockResolvedValue({
     topicLabel: 'Technology',

@@ -116,11 +116,21 @@ export async function callOpenRouter(representativeTitles) {
   const body = await response.json();
   const content = body?.choices?.[0]?.message?.content;
   if (!content) throw new Error('OpenRouter returned an empty response.');
-  try {
-    return JSON.parse(content);
-  } catch {
-    // Some models wrap JSON in ```json fences despite instructions — strip and retry once.
-    const stripped = content.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
-    return JSON.parse(stripped);
+
+  // Attempt 1: direct parse.
+  try { return JSON.parse(content); } catch {}
+
+  // Attempt 2: strip ```json fences some models add despite instructions.
+  const stripped = content.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+  try { return JSON.parse(stripped); } catch {}
+
+  // Attempt 3: extract the first {...} block, then repair = → : (some models emit
+  // Python/JS-style dict syntax instead of JSON).
+  const block = stripped.match(/\{[\s\S]*\}/)?.[0];
+  if (block) {
+    const repaired = block.replace(/"([^"]+)"\s*=\s*/g, '"$1": ');
+    try { return JSON.parse(repaired); } catch {}
   }
+
+  throw new Error('OpenRouter returned a response that could not be parsed as JSON.');
 }

@@ -154,7 +154,6 @@ async function _runInner(metadata) {
   // Compute cluster sizes
   const sizeMap = new Map();
   for (const { clusterId } of clusterAssignments) {
-    if (clusterId === -1) continue;
     sizeMap.set(clusterId, (sizeMap.get(clusterId) ?? 0) + 1);
   }
   const clusterSizes = [...sizeMap.entries()].map(([clusterId, size]) => ({ clusterId, size }));

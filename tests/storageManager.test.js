@@ -61,15 +61,6 @@ describe('StorageManager — VIDEO_ENTRY', () => {
     expect(result).toBeUndefined();
   });
 
-  it('getAllVideoEntries returns all saved entries', async () => {
-    const video2 = { ...MOCK_VIDEO, videoUrl: 'https://www.youtube.com/watch?v=xyz999', title: 'Video 2' };
-    await storage.putVideoEntry(MOCK_VIDEO);
-    await storage.putVideoEntry(video2);
-
-    const all = await storage.getAllVideoEntries();
-    expect(all).toHaveLength(2);
-  });
-
   it('getVideoEntriesBySession returns only entries for that session', async () => {
     const otherVideo = {
       ...MOCK_VIDEO,
@@ -97,13 +88,6 @@ describe('StorageManager — VIDEO_ENTRY', () => {
     expect(result.title).toBe('Updated Title');
   });
 
-  it('deletes a video entry', async () => {
-    await storage.putVideoEntry(MOCK_VIDEO);
-    await storage.deleteVideoEntry(MOCK_VIDEO.videoUrl);
-
-    const result = await storage.getVideoEntry(MOCK_VIDEO.videoUrl);
-    expect(result).toBeUndefined();
-  });
 });
 
 // ── SESSION_STATE ─────────────────────────────────────────────────────────────
@@ -147,53 +131,3 @@ describe('StorageManager — SESSION_STATE', () => {
   });
 });
 
-// ── Read-model projections (§5.6) ─────────────────────────────────────────────
-
-describe('StorageManager — UIState projection', () => {
-  let storage;
-
-  beforeEach(async () => { storage = await freshStorage(); });
-
-  it('returns only UIState fields', async () => {
-    await storage.putSessionState({ ...MOCK_STATE, clusters: [{ clusterId: 0, topicLabel: 'x', isDominant: true, escapeQueries: [] }] });
-    const ui = await storage.getUIState('session-1');
-
-    expect(ui).toEqual({ diversityScore: 0.42, alertState: 'healthy', calibrationPhase: false, enrichmentStatus: 'done' });
-    expect(ui.clusters).toBeUndefined();
-  });
-
-  it('returns undefined for a missing session', async () => {
-    expect(await storage.getUIState('no-session')).toBeUndefined();
-  });
-});
-
-describe('StorageManager — PipelineState projection', () => {
-  let storage;
-
-  beforeEach(async () => { storage = await freshStorage(); });
-
-  it('returns clusters from session state and watchedVideos from VIDEO_ENTRY', async () => {
-    const cluster = { clusterId: 0, topicLabel: 'Science', isDominant: true, escapeQueries: [] };
-    await storage.putSessionState({ ...MOCK_STATE, clusters: [cluster] });
-    await storage.putVideoEntry(MOCK_VIDEO);
-
-    const pipeline = await storage.getPipelineState('session-1');
-
-    expect(pipeline.clusters).toHaveLength(1);
-    expect(pipeline.clusters[0].topicLabel).toBe('Science');
-    expect(pipeline.watchedVideos).toHaveLength(1);
-    expect(pipeline.watchedVideos[0].videoUrl).toBe(MOCK_VIDEO.videoUrl);
-  });
-
-  it('returns empty clusters and watchedVideos when session exists but is empty', async () => {
-    await storage.putSessionState(MOCK_STATE);
-    const pipeline = await storage.getPipelineState('session-1');
-
-    expect(pipeline.clusters).toEqual([]);
-    expect(pipeline.watchedVideos).toEqual([]);
-  });
-
-  it('returns undefined for a missing session', async () => {
-    expect(await storage.getPipelineState('no-session')).toBeUndefined();
-  });
-});
