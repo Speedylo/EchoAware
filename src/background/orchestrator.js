@@ -1,6 +1,9 @@
 import { MSG_VIDEO_NAVIGATED } from '../shared/messageTypes.js';
 import { getConfig } from '../storage/configStore.js';
+import { getStorageManager } from '../storage/StorageManager.js';
 import { runAnalysisPipeline } from './analysisPipeline.js';
+
+const SESSION_ID_KEY = 'echoaware_session_id';
 
 export async function handleMessage(message, sender, sendResponse) {
   switch (message.type) {
@@ -15,15 +18,41 @@ export async function handleMessage(message, sender, sendResponse) {
 
 export async function triggerBadgeAlert(score) {
   const config = await getConfig();
-  if (score < config.thresholdD) {
+  const pct = Math.round(score * 100);
+  const thresholdPct = Math.round(config.thresholdD * 100);
+  if (pct < thresholdPct) {
     chrome.action.setBadgeText({ text: '!' });
-    chrome.action.setBadgeBackgroundColor({ color: '#E53935' });
-  } else if (Math.round(score * 100) < 80) {
+    chrome.action.setBadgeBackgroundColor({ color: '#EF4444' });
+    chrome.action.setBadgeTextColor?.({ color: '#FFFFFF' });
+    chrome.action.setTitle?.({ title: 'EchoAware — echo chamber detected' });
+  } else if (pct < 80) {
     chrome.action.setBadgeText({ text: '~' });
-    chrome.action.setBadgeBackgroundColor({ color: '#F9A825' });
+    chrome.action.setBadgeBackgroundColor({ color: '#F59E0B' });
+    chrome.action.setBadgeTextColor?.({ color: '#FFFFFF' });
+    chrome.action.setTitle?.({ title: 'EchoAware — borderline diversity' });
   } else {
     chrome.action.setBadgeText({ text: '' });
+    chrome.action.setTitle?.({ title: 'EchoAware' });
   }
+}
+
+// Re-applies the toolbar badge from the persisted session state.
+// Why: MV3 service workers are torn down at idle and the badge resets when the
+// extension is reloaded, so without this the alert cue silently disappears
+// until the user watches another video. Called on every SW startup.
+export async function syncBadgeFromState() {
+  const sessionId = await new Promise((resolve) => {
+    chrome.storage.local.get(SESSION_ID_KEY, (r) => resolve(r[SESSION_ID_KEY] ?? null));
+  });
+  if (!sessionId) return;
+  const storage = await getStorageManager();
+  const state = await storage.getSessionState(sessionId);
+  if (!state || state.alertState === 'calibrating') {
+    chrome.action.setBadgeText({ text: '' });
+    chrome.action.setTitle?.({ title: 'EchoAware' });
+    return;
+  }
+  await triggerBadgeAlert(state.diversityScore);
 }
 
 // Turn an OpenRouter error payload into a short user-facing reason.
@@ -70,15 +99,16 @@ export async function callOpenRouter(representativeTitles) {
           {
             role: 'system',
             content:
-              'You detect echo chambers in YouTube viewing patterns and suggest diverse alternative content. Always reply with valid JSON only.',
+              'You analyse YouTube echo chambers and suggest alternative content. Always reply with valid JSON only, no markdown fences.',
           },
           {
             role: 'user',
             content:
-              `I keep watching videos about these topics: ${representativeTitles.join(', ')}. ` +
-              'Identify the main topic and give me 3 search queries to diversify my feed. ' +
+              `The user keeps watching: ${representativeTitles.map(t => `"${t}"`).join(', ')}. ` +
+              'Identify the dominant topic and suggest 3 concise YouTube search queries to diversify their feed. ' +
+              'Rules: each query must be 3–7 words, sentence case (capitalise first word only), no trailing punctuation. ' +
               'Reply in this exact JSON shape: ' +
-              '{"topicLabel":"...", "escapeQueries":[{"queryText":"..."},{"queryText":"..."},{"queryText":"..."}]}',
+              '{"topicLabel":"...","escapeQueries":[{"queryText":"..."},{"queryText":"..."},{"queryText":"..."}]}',
           },
         ],
         response_format: { type: 'json_object' },

@@ -4,67 +4,144 @@
 <head>
 	<meta charset="UTF-8" />
 	<title>EchoAware</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+		rel="stylesheet" />
 	<link rel="stylesheet" href="popup.css" />
 </head>
 
 <body>
 	<div id="app">
-		<header class="app-header">EchoAware</header>
 
-		<div id="state-calibrating" class="state calibration-card" hidden>
-			<p class="calib-heading">Calibration phase</p>
-			<svg class="gauge" viewBox="0 0 120 120">
-				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
-				<circle id="calib-arc" class="gauge-arc gauge-arc--calib" cx="60" cy="60" r="52"></circle>
-				<text class="gauge-label" x="60" y="68" text-anchor="middle">
-					<tspan id="calib-count">0</tspan>/5
-				</text>
-			</svg>
-			<p class="calib-sub"><span id="video-count">0</span> / 5 videos watched</p>
-		</div>
+		<!-- Header -->
+		<header class="app-header">
+			<div class="logo-icon">
+				<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+					<circle cx="6.5" cy="6.5" r="2.5" fill="white" />
+					<circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.2" stroke-dasharray="2.5 2" fill="none" />
+				</svg>
+			</div>
+			<span class="wordmark">Echo<span>Aware</span></span>
+		</header>
 
-		<div id="state-healthy" class="state" hidden>
-			<svg class="gauge" viewBox="0 0 120 120">
-				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
-				<circle id="healthy-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
-				<text class="gauge-label" x="60" y="68" text-anchor="middle">
-					<tspan id="diversity-score">0%</tspan>
-				</text>
-			</svg>
-			<p class="score-caption">Diversity Score</p>
-			<span class="state-badge state-badge--healthy">Healthy</span>
-		</div>
+		<!-- ── State: Calibrating ─────────────────────────────── -->
+		<div id="state-calibrating" class="state" hidden>
+			<div class="glass-card">
+				<p class="calib-heading">Calibration phase</p>
 
-		<div id="state-borderline" class="state" hidden>
-			<svg class="gauge" viewBox="0 0 120 120">
-				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
-				<circle id="borderline-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
-				<text class="gauge-label" x="60" y="68" text-anchor="middle">
-					<tspan id="borderline-score">0%</tspan>
-				</text>
-			</svg>
-			<p class="score-caption">Diversity Score</p>
-			<span class="state-badge state-badge--borderline">Borderline</span>
-		</div>
+				<div class="gauge-wrap">
+					<div class="gauge-glow" style="background: var(--c-blue);"></div>
+					<svg class="gauge" viewBox="0 0 120 120">
+						<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+						<circle id="calib-arc" class="gauge-arc" cx="60" cy="60" r="52" stroke="var(--c-blue)"></circle>
+					</svg>
+					<div class="gauge-center">
+						<span class="gauge-score" style="color: var(--c-blue)"><span id="calib-count">0</span><span
+								style="font-size:14px;color:var(--text-2)">/5</span></span>
+						<span class="gauge-sub">videos</span>
+					</div>
+				</div>
 
-		<div id="state-alert" class="state" hidden>
-			<svg class="gauge" viewBox="0 0 120 120">
-				<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
-				<circle id="alert-arc" class="gauge-arc" cx="60" cy="60" r="52"></circle>
-				<text class="gauge-label" x="60" y="68" text-anchor="middle">
-					<tspan id="alert-score">0%</tspan>
-				</text>
-			</svg>
-			<p class="score-caption">Diversity Score</p>
-			<span class="state-badge state-badge--alert">Alert</span>
-			<p id="topic-label" class="topic-label">Analysing...</p>
-			<ul id="representative-titles" class="rep-titles" hidden></ul>
-			<button id="break-bubble-btn" class="break-btn">Break the bubble</button>
-			<div id="escape-queries-wrap" hidden>
-				<ul id="escape-queries"></ul>
+				<p class="calib-sub"><span id="video-count">0</span> of 5 videos watched</p>
+				<p class="calib-hint">EchoAware needs 5 videos to<br>build your baseline profile.</p>
+
+				<div class="calib-steps">
+					<div class="calib-step" data-step="0"></div>
+					<div class="calib-step" data-step="1"></div>
+					<div class="calib-step" data-step="2"></div>
+					<div class="calib-step" data-step="3"></div>
+					<div class="calib-step" data-step="4"></div>
+				</div>
 			</div>
 		</div>
+
+		<!-- ── State: Healthy ─────────────────────────────────── -->
+		<div id="state-healthy" class="state" hidden>
+			<div class="glass-card">
+				<p class="score-caption">Diversity Score</p>
+
+				<div class="gauge-wrap">
+					<div class="gauge-glow" id="healthy-glow" style="background: var(--c-green);"></div>
+					<svg class="gauge" viewBox="0 0 120 120">
+						<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+						<circle id="healthy-arc" class="gauge-arc" cx="60" cy="60" r="52" stroke="var(--c-green)"></circle>
+					</svg>
+					<div class="gauge-center">
+						<span class="gauge-score" id="diversity-score">0%</span>
+						<span class="gauge-sub">score</span>
+					</div>
+				</div>
+
+				<span class="state-badge state-badge--healthy">
+					<span class="dot"></span>Healthy
+				</span>
+			</div>
+		</div>
+
+		<!-- ── State: Borderline ──────────────────────────────── -->
+		<div id="state-borderline" class="state" hidden>
+			<div class="glass-card">
+				<p class="score-caption">Diversity Score</p>
+
+				<div class="gauge-wrap">
+					<div class="gauge-glow" style="background: var(--c-amber);"></div>
+					<svg class="gauge" viewBox="0 0 120 120">
+						<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+						<circle id="borderline-arc" class="gauge-arc" cx="60" cy="60" r="52" stroke="var(--c-amber)"></circle>
+					</svg>
+					<div class="gauge-center">
+						<span class="gauge-score" id="borderline-score">0%</span>
+						<span class="gauge-sub">score</span>
+					</div>
+				</div>
+
+				<span class="state-badge state-badge--borderline">
+					<span class="dot"></span>Borderline
+				</span>
+			</div>
+		</div>
+
+		<!-- ── State: Alert ───────────────────────────────────── -->
+		<div id="state-alert" class="state" hidden>
+			<div class="glass-card">
+				<p class="score-caption">Diversity Score</p>
+
+				<div class="gauge-wrap">
+					<div class="gauge-glow" style="background: var(--c-red);"></div>
+					<svg class="gauge" viewBox="0 0 120 120">
+						<circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+						<circle id="alert-arc" class="gauge-arc" cx="60" cy="60" r="52" stroke="var(--c-red)"></circle>
+					</svg>
+					<div class="gauge-center">
+						<span class="gauge-score" id="alert-score">0%</span>
+						<span class="gauge-sub">score</span>
+					</div>
+				</div>
+
+				<span class="state-badge state-badge--alert">
+					<span class="dot"></span>Alert
+				</span>
+
+				<div class="topic-section">
+					<p class="topic-label-head">Dominant topic</p>
+					<p id="topic-label" class="topic-label">Analysing...</p>
+
+					<ul id="representative-titles" class="rep-titles" hidden></ul>
+				</div>
+
+				<button id="break-bubble-btn" class="break-btn">Break the bubble</button>
+
+				<div id="escape-queries-wrap" hidden>
+					<p class="escape-queries-head">Explore counter-perspectives</p>
+					<ul id="escape-queries"></ul>
+				</div>
+
+			</div>
+		</div>
+
 	</div>
+
 	<script type="module" src="../../dist/popup.js"></script>
 </body>
 

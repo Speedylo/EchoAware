@@ -163,8 +163,9 @@ async function _runInner(metadata) {
   const { score, calibrating } = calculateSimpsonsDiversity(clusterSizes);
 
   const config = await getConfig();
-  const isAlert = !calibrating && score < config.thresholdD;
-  const isBorderline = !calibrating && !isAlert && Math.round(score * 100) < 80;
+  const pct = Math.round(score * 100);
+  const isAlert = !calibrating && pct < Math.round(config.thresholdD * 100);
+  const isBorderline = !calibrating && !isAlert && pct < 80;
   const alertState = calibrating ? 'calibrating' : isAlert ? 'alert' : isBorderline ? 'borderline' : 'healthy';
 
   const dominantClusterId = clusterSizes.reduce(

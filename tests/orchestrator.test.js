@@ -58,7 +58,7 @@ describe('triggerBadgeAlert', () => {
   it('shows a red ! badge when score is below the 0.6 threshold', async () => {
     await triggerBadgeAlert(0.3);
     expect(mockSetBadgeText).toHaveBeenCalledWith({ text: '!' });
-    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#E53935' });
+    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#EF4444' });
   });
 
   it('shows a red ! badge for score 0 (maximum echo chamber)', async () => {
@@ -69,13 +69,13 @@ describe('triggerBadgeAlert', () => {
   it('shows a yellow ~ badge at exactly the 0.6 threshold (boundary — borderline)', async () => {
     await triggerBadgeAlert(0.6);
     expect(mockSetBadgeText).toHaveBeenCalledWith({ text: '~' });
-    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#F9A825' });
+    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#F59E0B' });
   });
 
   it('shows a yellow ~ badge for a borderline score (e.g. 75%)', async () => {
     await triggerBadgeAlert(0.75);
     expect(mockSetBadgeText).toHaveBeenCalledWith({ text: '~' });
-    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#F9A825' });
+    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#F59E0B' });
   });
 
   it('clears badge at exactly 80% (boundary — healthy)', async () => {
