@@ -6,7 +6,8 @@ import {
 import { getStorageManager } from '../storage/StorageManager.js';
 import { getConfig } from '../storage/configStore.js';
 import { calculateSimpsonsDiversity } from './diversityCalculator.js';
-import { triggerBadgeAlert, callOpenRouter } from './orchestrator.js';
+import { triggerBadgeAlert } from './badgeManager.js';
+import { callOpenRouter } from './openRouterClient.js';
 import { MIN_VIDEOS_CALIBRATION, OFFSCREEN_HTML_PATH } from '../shared/constants.js';
 
 const SESSION_ID_KEY = 'echoaware_session_id';
@@ -35,8 +36,7 @@ async function ensureOffscreenDocument() {
   });
 }
 
-// MV3 terminates idle service workers at ~30s. Model download + LLM call
-// routinely exceed that, so keep the worker alive for the pipeline's duration.
+// MV3 terminates idle service workers at ~30s. This is a keep alive function
 function startKeepalive() {
   if (typeof chrome?.runtime?.getPlatformInfo !== 'function') return () => {};
   const id = setInterval(() => { chrome.runtime.getPlatformInfo().catch(() => {}); }, 20_000);
@@ -66,6 +66,7 @@ export function runAnalysisPipeline(metadata) {
   return next;
 }
 
+
 async function _run(metadata) {
   const stopKeepalive = startKeepalive();
   try {
@@ -75,13 +76,33 @@ async function _run(metadata) {
   }
 }
 
+// Calls OpenRouter and applies the result to the dominant cluster object in-place.
+// Returns { enrichmentStatus, enrichmentError } so the caller can persist them.
+async function _runEnrichment(dominant, dominantTitles) {
+  try {
+    const enriched = await callOpenRouter(dominantTitles);
+    if (enriched) {
+      dominant.topicLabel = enriched.topicLabel ?? '';
+      dominant.escapeQueries = (enriched.escapeQueries ?? []).map((q, i) => ({
+        queryId: `q${i + 1}`,
+        queryText: typeof q === 'string' ? q : (q.queryText ?? ''),
+        isCopied: false,
+      }));
+    }
+    return { enrichmentStatus: 'done', enrichmentError: null };
+  } catch (err) {
+    console.error('[EchoAware] OpenRouter enrichment failed:', err);
+    return { enrichmentStatus: 'error', enrichmentError: err?.message ?? String(err) };
+  }
+}
+
 async function _runInner(metadata) {
   const [storage, sessionId] = await Promise.all([
     getStorageManager(),
     getOrCreateSessionId(),
   ]);
 
-  // Deduplicate: skip if embedding already computed for this URL
+  // Skip if embedding already computed for this URL
   const existing = await storage.getVideoEntry(metadata.url);
   if (existing?.embedding) return;
 
@@ -97,7 +118,7 @@ async function _runInner(metadata) {
 
   await ensureOffscreenDocument();
 
-  // Title only: channel names inject cross-topic noise that splits topically-similar videos.
+  // Send title only to offscreen document
   const embedding = await sendToOffscreen({
     target: 'offscreen',
     type: MSG_EMBED_REQUEST,
@@ -128,6 +149,7 @@ async function _runInner(metadata) {
       alertState: 'calibrating',
       calibrationPhase: true,
       enrichmentStatus: 'idle',
+      enrichmentError: null,
       clusters: [],
     });
     chrome.runtime.sendMessage({ type: MSG_STATE_UPDATED }).catch(() => {});
@@ -150,10 +172,9 @@ async function _runInner(metadata) {
     )
   );
 
-  // Compute cluster sizes (ignore noise cluster -1)
+  // Compute cluster sizes
   const sizeMap = new Map();
   for (const { clusterId } of clusterAssignments) {
-    if (clusterId === -1) continue;
     sizeMap.set(clusterId, (sizeMap.get(clusterId) ?? 0) + 1);
   }
   const clusterSizes = [...sizeMap.entries()].map(([clusterId, size]) => ({ clusterId, size }));
@@ -161,28 +182,52 @@ async function _runInner(metadata) {
   const { score, calibrating } = calculateSimpsonsDiversity(clusterSizes);
 
   const config = await getConfig();
-  const isAlert = !calibrating && score < config.thresholdD;
-  const alertState = calibrating ? 'calibrating' : isAlert ? 'alert' : 'healthy';
+  const pct = Math.round(score * 100);
+  const isAlert = !calibrating && pct < Math.round(config.thresholdD * 100);
+  const isBorderline = !calibrating && !isAlert && pct < 80;
+  const alertState = calibrating ? 'calibrating' : isAlert ? 'alert' : isBorderline ? 'borderline' : 'healthy';
 
   const dominantClusterId = clusterSizes.reduce(
     (best, c) => c.size > (best?.size ?? -1) ? c : best, null
   )?.clusterId ?? null;
 
-  const clusters = clusterSizes.map(({ clusterId }) => ({
-    clusterId,
-    topicLabel: '',
-    isDominant: clusterId === dominantClusterId,
-    escapeQueries: [],
-  }));
+  // Carry returned queries and label forward from the previous run so we don't re-hit OpenRouter
+  // on every new video, which exhausts the 50/day free-tier quota rapidly
+  const prevState = await storage.getSessionState(sessionId);
+  const prevByCluster = new Map(
+    (prevState?.clusters ?? []).map(c => [c.clusterId, c])
+  );
+
+  const clusters = clusterSizes.map(({ clusterId }) => {
+    const prev = prevByCluster.get(clusterId);
+    return {
+      clusterId,
+      topicLabel: prev?.topicLabel ?? '',
+      isDominant: clusterId === dominantClusterId,
+      escapeQueries: prev?.escapeQueries ?? [],
+    };
+  });
 
   let enrichmentStatus = 'idle';
+  let enrichmentError = null;
 
-  if (isAlert) {
+  const dominant = clusters.find(c => c.isDominant);
+  const needsEnrichment = isAlert && dominant
+    && (!dominant.topicLabel || dominant.escapeQueries.length === 0);
+
+  if (isAlert && !needsEnrichment) {
+    // Dominant cluster already enriched on a previous run — reuse it.
+    enrichmentStatus = 'done';
+  }
+
+  if (needsEnrichment) {
     enrichmentStatus = 'enriching';
     await storage.putSessionState({
       sessionId, diversityScore: score, alertState,
-      calibrationPhase: false, enrichmentStatus, clusters,
+      calibrationPhase: false, enrichmentStatus, enrichmentError: null, clusters,
+      enrichmentStartedAt: Date.now(),
     });
+    chrome.runtime.sendMessage({ type: MSG_STATE_UPDATED }).catch(() => {});
 
     const dominantIndices = new Set(
       clusterAssignments.filter(a => a.clusterId === dominantClusterId).map(a => a.videoIndex)
@@ -191,27 +236,12 @@ async function _runInner(metadata) {
       .filter((_, i) => dominantIndices.has(i))
       .map(v => v.title);
 
-    try {
-      const enriched = await callOpenRouter(dominantTitles);
-      const dominant = clusters.find(c => c.isDominant);
-      if (dominant && enriched) {
-        dominant.topicLabel = enriched.topicLabel ?? '';
-        dominant.escapeQueries = (enriched.escapeQueries ?? []).map((q, i) => ({
-          queryId: `q${i + 1}`,
-          queryText: typeof q === 'string' ? q : (q.queryText ?? ''),
-          isCopied: false,
-        }));
-      }
-    } catch (err) {
-      console.error('[EchoAware] OpenRouter enrichment failed:', err);
-    }
-
-    enrichmentStatus = 'done';
+    ({ enrichmentStatus, enrichmentError } = await _runEnrichment(dominant, dominantTitles));
   }
 
   await storage.putSessionState({
     sessionId, diversityScore: score, alertState,
-    calibrationPhase: false, enrichmentStatus, clusters,
+    calibrationPhase: false, enrichmentStatus, enrichmentError, clusters,
   });
 
   await triggerBadgeAlert(score);

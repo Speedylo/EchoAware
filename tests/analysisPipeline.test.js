@@ -9,9 +9,11 @@ import {
 
 // ── Module mocks (hoisted by Vitest) ─────────────────────────────────────────
 
-vi.mock('../src/background/orchestrator.js', () => ({
-  handleMessage: vi.fn(),
+vi.mock('../src/background/badgeManager.js', () => ({
   triggerBadgeAlert: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../src/background/openRouterClient.js', () => ({
   callOpenRouter: vi.fn().mockResolvedValue({
     topicLabel: 'Technology',
     escapeQueries: [
@@ -26,7 +28,7 @@ vi.mock('../src/storage/configStore.js', () => ({
   getConfig: vi.fn().mockResolvedValue({
     thresholdD: 0.6,
     inferenceEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
-    chatModel: 'openrouter/free',
+    chatModel: 'openai/gpt-oss-120b:free',
     openRouterApiKey: 'test-key',
   }),
 }));
@@ -34,7 +36,8 @@ vi.mock('../src/storage/configStore.js', () => ({
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import { runAnalysisPipeline } from '../src/background/analysisPipeline.js';
-import { triggerBadgeAlert, callOpenRouter } from '../src/background/orchestrator.js';
+import { triggerBadgeAlert } from '../src/background/badgeManager.js';
+import { callOpenRouter } from '../src/background/openRouterClient.js';
 
 // ── Chrome API stub ───────────────────────────────────────────────────────────
 
@@ -84,8 +87,6 @@ function makeMetadata(id) {
   return {
     url: `https://www.youtube.com/watch?v=${id}`,
     title: `Video ${id}`,
-    channelName: 'Test Channel',
-    description: '',
   };
 }
 
@@ -230,6 +231,50 @@ describe('runAnalysisPipeline — healthy state (score ≥ threshold)', () => {
   });
 });
 
+describe('runAnalysisPipeline — borderline state (threshold ≤ score < 0.8)', () => {
+  let storage;
+
+  beforeEach(async () => {
+    storage = await freshStorage();
+    vi.clearAllMocks();
+  });
+
+  it('transitions to borderline with 3 clusters sized [2,2,1] (D ≈ 0.64)', async () => {
+    // clusters 0,0,1,1,2 → sizes [2,2,1] → D = 1 - (0.16+0.16+0.04) = 0.64
+    await seedVideos(5, {
+      clusterAssignmentFn: (embs) => embs.map((_, i) => ({
+        videoIndex: i,
+        clusterId: i < 2 ? 0 : i < 4 ? 1 : 2,
+      })),
+    });
+
+    const state = await storage.getSessionState('test-session-1');
+    expect(state.alertState).toBe('borderline');
+    expect(state.diversityScore).toBeCloseTo(0.64, 5);
+    expect(state.calibrationPhase).toBe(false);
+  });
+
+  it('does NOT call callOpenRouter when borderline', async () => {
+    await seedVideos(5, {
+      clusterAssignmentFn: (embs) => embs.map((_, i) => ({
+        videoIndex: i,
+        clusterId: i < 2 ? 0 : i < 4 ? 1 : 2,
+      })),
+    });
+    expect(callOpenRouter).not.toHaveBeenCalled();
+  });
+
+  it('calls triggerBadgeAlert with the borderline score', async () => {
+    await seedVideos(5, {
+      clusterAssignmentFn: (embs) => embs.map((_, i) => ({
+        videoIndex: i,
+        clusterId: i < 2 ? 0 : i < 4 ? 1 : 2,
+      })),
+    });
+    expect(triggerBadgeAlert).toHaveBeenCalledWith(expect.closeTo(0.64, 5));
+  });
+});
+
 describe('runAnalysisPipeline — alert state (score < threshold)', () => {
   let storage;
 
@@ -301,6 +346,7 @@ describe('runAnalysisPipeline — alert state (score < threshold)', () => {
 
     const state = await storage.getSessionState('test-session-1');
     expect(state.alertState).toBe('alert');
-    expect(state.enrichmentStatus).toBe('done');
+    expect(state.enrichmentStatus).toBe('error');
+    expect(state.enrichmentError).toBe('API unavailable');
   });
 });

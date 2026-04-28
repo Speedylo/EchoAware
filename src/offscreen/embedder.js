@@ -1,7 +1,8 @@
 import { pipeline, env } from '@xenova/transformers';
 
 env.allowLocalModels = false;
-env.useBrowserCache = true;
+env.useBrowserCache = false;
+env.backends.onnx.wasm.numThreads = 1;
 
 let _extractor = null;
 
