@@ -21,7 +21,7 @@ export function openDB() {
       }
 
       if (oldVersion === 1) {
-        // v1 → v2: add sessionId index to existing VIDEO_ENTRY store
+        // Add sessionId index to existing VIDEO_ENTRY store.
         const videoStore = event.target.transaction.objectStore(STORE_VIDEO_ENTRY);
         if (!videoStore.indexNames.contains('sessionId')) {
           videoStore.createIndex('sessionId', 'sessionId', { unique: false });

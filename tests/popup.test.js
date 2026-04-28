@@ -172,12 +172,12 @@ describe('renderHealthy', () => {
 
   it('shows yellow on the gauge for scores in the 70-80% band', () => {
     renderHealthy(0.75);
-    expect(document.getElementById('healthy-arc').style.stroke).toBe('rgb(249, 168, 37)');
+    expect(document.getElementById('healthy-arc').style.stroke).toBe('var(--c-amber)');
   });
 
   it('shows green on the gauge for scores >= 80%', () => {
     renderHealthy(0.85);
-    expect(document.getElementById('healthy-arc').style.stroke).toBe('rgb(46, 125, 50)');
+    expect(document.getElementById('healthy-arc').style.stroke).toBe('var(--c-green)');
   });
 
   it('shows the "Healthy" state badge', () => {
@@ -215,7 +215,7 @@ describe('renderBorderline', () => {
 
   it('paints the gauge arc yellow for scores in the 70-80% band', () => {
     renderBorderline(0.75);
-    expect(document.getElementById('borderline-arc').style.stroke).toBe('rgb(249, 168, 37)');
+    expect(document.getElementById('borderline-arc').style.stroke).toBe('var(--c-amber)');
   });
 
   it('shows the "Borderline" state badge', () => {
@@ -255,7 +255,7 @@ describe('renderAlert — panel and score', () => {
 
   it('paints the gauge red for low scores', () => {
     renderAlert({ ...BASE_ALERT_STATE, diversityScore: 0.2 });
-    expect(document.getElementById('alert-arc').style.stroke).toBe('rgb(229, 57, 53)');
+    expect(document.getElementById('alert-arc').style.stroke).toBe('var(--c-red)');
   });
 
   it('shows the "Alert" state badge', () => {
@@ -299,8 +299,8 @@ describe('renderAlert — escape queries', () => {
   it('each item has query text and a Search button', () => {
     renderAlert(BASE_ALERT_STATE);
     const first = document.querySelector('.escape-query');
-    expect(first.querySelector('.query-text').textContent).toBe('nature documentaries');
-    expect(first.querySelector('.search-btn').textContent).toBe('Search');
+    expect(first.querySelector('.query-text').textContent).toBe('Nature documentaries');
+    expect(first.querySelector('.search-btn').textContent).toBe('Search ↗');
   });
 
   it('keeps the queries wrap hidden until Break-the-bubble is clicked', () => {

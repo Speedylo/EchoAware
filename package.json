@@ -12,8 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@xenova/transformers": "^2.0.1",
-    "hdbscanjs": "^1.0.12"
+    "@xenova/transformers": "^2.0.1"
   },
   "overrides": {
     "onnxruntime-web": "1.14.0",
