@@ -1,6 +1,6 @@
 import { MSG_VIDEO_NAVIGATED } from '../shared/messageTypes.js';
 import { runAnalysisPipeline } from './analysisPipeline.js';
-import { syncBadgeFromState } from './orchestrator.js';
+import { syncBadgeFromState } from './badgeManager.js';
 
 // Without this the badge would be empty after any reload until the next VIDEO_NAVIGATED event reaches the pipeline.
 syncBadgeFromState().catch(() => {});

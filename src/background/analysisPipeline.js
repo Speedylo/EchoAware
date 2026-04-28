@@ -6,7 +6,8 @@ import {
 import { getStorageManager } from '../storage/StorageManager.js';
 import { getConfig } from '../storage/configStore.js';
 import { calculateSimpsonsDiversity } from './diversityCalculator.js';
-import { triggerBadgeAlert, callOpenRouter } from './orchestrator.js';
+import { triggerBadgeAlert } from './badgeManager.js';
+import { callOpenRouter } from './openRouterClient.js';
 import { MIN_VIDEOS_CALIBRATION, OFFSCREEN_HTML_PATH } from '../shared/constants.js';
 
 const SESSION_ID_KEY = 'echoaware_session_id';
@@ -75,6 +76,26 @@ async function _run(metadata) {
   }
 }
 
+// Calls OpenRouter and applies the result to the dominant cluster object in-place.
+// Returns { enrichmentStatus, enrichmentError } so the caller can persist them.
+async function _runEnrichment(dominant, dominantTitles) {
+  try {
+    const enriched = await callOpenRouter(dominantTitles);
+    if (enriched) {
+      dominant.topicLabel = enriched.topicLabel ?? '';
+      dominant.escapeQueries = (enriched.escapeQueries ?? []).map((q, i) => ({
+        queryId: `q${i + 1}`,
+        queryText: typeof q === 'string' ? q : (q.queryText ?? ''),
+        isCopied: false,
+      }));
+    }
+    return { enrichmentStatus: 'done', enrichmentError: null };
+  } catch (err) {
+    console.error('[EchoAware] OpenRouter enrichment failed:', err);
+    return { enrichmentStatus: 'error', enrichmentError: err?.message ?? String(err) };
+  }
+}
+
 async function _runInner(metadata) {
   const [storage, sessionId] = await Promise.all([
     getStorageManager(),
@@ -97,7 +118,7 @@ async function _runInner(metadata) {
 
   await ensureOffscreenDocument();
 
-  // Send Title only to offscreen document
+  // Send title only to offscreen document
   const embedding = await sendToOffscreen({
     target: 'offscreen',
     type: MSG_EMBED_REQUEST,
@@ -215,22 +236,7 @@ async function _runInner(metadata) {
       .filter((_, i) => dominantIndices.has(i))
       .map(v => v.title);
 
-    try {
-      const enriched = await callOpenRouter(dominantTitles);
-      if (enriched) {
-        dominant.topicLabel = enriched.topicLabel ?? '';
-        dominant.escapeQueries = (enriched.escapeQueries ?? []).map((q, i) => ({
-          queryId: `q${i + 1}`,
-          queryText: typeof q === 'string' ? q : (q.queryText ?? ''),
-          isCopied: false,
-        }));
-      }
-      enrichmentStatus = 'done';
-    } catch (err) {
-      console.error('[EchoAware] OpenRouter enrichment failed:', err);
-      enrichmentStatus = 'error';
-      enrichmentError = err?.message ?? String(err);
-    }
+    ({ enrichmentStatus, enrichmentError } = await _runEnrichment(dominant, dominantTitles));
   }
 
   await storage.putSessionState({

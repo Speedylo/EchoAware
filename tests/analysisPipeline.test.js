@@ -9,8 +9,11 @@ import {
 
 // ── Module mocks (hoisted by Vitest) ─────────────────────────────────────────
 
-vi.mock('../src/background/orchestrator.js', () => ({
+vi.mock('../src/background/badgeManager.js', () => ({
   triggerBadgeAlert: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../src/background/openRouterClient.js', () => ({
   callOpenRouter: vi.fn().mockResolvedValue({
     topicLabel: 'Technology',
     escapeQueries: [
@@ -33,7 +36,8 @@ vi.mock('../src/storage/configStore.js', () => ({
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import { runAnalysisPipeline } from '../src/background/analysisPipeline.js';
-import { triggerBadgeAlert, callOpenRouter } from '../src/background/orchestrator.js';
+import { triggerBadgeAlert } from '../src/background/badgeManager.js';
+import { callOpenRouter } from '../src/background/openRouterClient.js';
 
 // ── Chrome API stub ───────────────────────────────────────────────────────────
 
