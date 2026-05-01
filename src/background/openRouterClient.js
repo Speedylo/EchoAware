@@ -1,33 +1,5 @@
-import { MSG_VIDEO_NAVIGATED } from '../shared/messageTypes.js';
 import { getConfig } from '../storage/configStore.js';
-import { runAnalysisPipeline } from './analysisPipeline.js';
 
-export async function handleMessage(message, sender, sendResponse) {
-  switch (message.type) {
-    case MSG_VIDEO_NAVIGATED:
-      await runAnalysisPipeline(message.payload);
-      sendResponse({ ok: true });
-      break;
-    default:
-      sendResponse({ ok: false, error: 'Unknown message type' });
-  }
-}
-
-export async function triggerBadgeAlert(score) {
-  const config = await getConfig();
-  if (score < config.thresholdD) {
-    chrome.action.setBadgeText({ text: '!' });
-    chrome.action.setBadgeBackgroundColor({ color: '#E53935' });
-  } else if (Math.round(score * 100) < 80) {
-    chrome.action.setBadgeText({ text: '~' });
-    chrome.action.setBadgeBackgroundColor({ color: '#F9A825' });
-  } else {
-    chrome.action.setBadgeText({ text: '' });
-  }
-}
-
-// Turn an OpenRouter error payload into a short user-facing reason.
-// Why: the raw body is JSON with nested fields that nobody can read in a popup.
 function friendlyOpenRouterError(status, rawBody) {
   let parsed;
   try { parsed = JSON.parse(rawBody); } catch { parsed = null; }
@@ -70,15 +42,16 @@ export async function callOpenRouter(representativeTitles) {
           {
             role: 'system',
             content:
-              'You detect echo chambers in YouTube viewing patterns and suggest diverse alternative content. Always reply with valid JSON only.',
+              'You analyse YouTube echo chambers and suggest alternative content. Always reply with valid JSON only, no markdown fences.',
           },
           {
             role: 'user',
             content:
-              `I keep watching videos about these topics: ${representativeTitles.join(', ')}. ` +
-              'Identify the main topic and give me 3 search queries to diversify my feed. ' +
+              `The user keeps watching: ${representativeTitles.map(t => `"${t}"`).join(', ')}. ` +
+              'Identify the dominant topic and suggest 3 concise YouTube search queries to diversify their feed. ' +
+              'Rules: each query must be 3–7 words, sentence case (capitalise first word only), no trailing punctuation. ' +
               'Reply in this exact JSON shape: ' +
-              '{"topicLabel":"...", "escapeQueries":[{"queryText":"..."},{"queryText":"..."},{"queryText":"..."}]}',
+              '{"topicLabel":"...","escapeQueries":[{"queryText":"..."},{"queryText":"..."},{"queryText":"..."}]}',
           },
         ],
         response_format: { type: 'json_object' },
@@ -100,11 +73,21 @@ export async function callOpenRouter(representativeTitles) {
   const body = await response.json();
   const content = body?.choices?.[0]?.message?.content;
   if (!content) throw new Error('OpenRouter returned an empty response.');
-  try {
-    return JSON.parse(content);
-  } catch {
-    // Some models wrap JSON in ```json fences despite instructions — strip and retry once.
-    const stripped = content.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
-    return JSON.parse(stripped);
+
+  // Attempt 1: direct parse.
+  try { return JSON.parse(content); } catch {}
+
+  // Attempt 2: strip ```json fences some models add despite instructions.
+  const stripped = content.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+  try { return JSON.parse(stripped); } catch {}
+
+  // Attempt 3: extract the first {...} block, then repair = → : (some models emit
+  // Python/JS-style dict syntax instead of JSON).
+  const block = stripped.match(/\{[\s\S]*\}/)?.[0];
+  if (block) {
+    const repaired = block.replace(/"([^"]+)"\s*=\s*/g, '"$1": ');
+    try { return JSON.parse(repaired); } catch {}
   }
+
+  throw new Error('OpenRouter returned a response that could not be parsed as JSON.');
 }

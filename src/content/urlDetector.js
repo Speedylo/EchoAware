@@ -20,7 +20,7 @@ export const urlDetector = {
     // (A → B → A) can be notified again for the second visit.
     window.addEventListener('yt-navigate-start', () => { _lastNotified = ''; });
 
-    // Primary signal: YouTube's SPA navigation complete event.
+    // Primary signal: YouTube navigation complete event.
     window.addEventListener('yt-navigate-finish', () => {
       maybeNotify(window.location.href);
     });
@@ -33,11 +33,17 @@ export const urlDetector = {
 
     // Tertiary fallback: intercept history.pushState for environments where
     // neither YouTube event fires (certain A/B test page variants).
-    const originalPushState = history.pushState.bind(history);
-    history.pushState = function (...args) {
-      originalPushState(...args);
-      maybeNotify(window.location.href);
-    };
+    // Guard prevents double-wrapping if the content script re-runs (extension
+    // reload, BFCache restore) — without this, each re-run stacks another
+    // wrapper and maybeNotify fires N times per real navigation.
+    if (!history.pushState.__echoaware) {
+      const originalPushState = history.pushState.bind(history);
+      history.pushState = function (...args) {
+        originalPushState(...args);
+        maybeNotify(window.location.href);
+      };
+      history.pushState.__echoaware = true;
+    }
 
     window.addEventListener('popstate', () => {
       maybeNotify(window.location.href);
