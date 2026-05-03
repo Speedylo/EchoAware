@@ -13,7 +13,7 @@ export const urlDetector = {
     const maybeNotify = (url) => {
       if (!isWatchUrl(url) || url === _lastNotified) return;
       _lastNotified = url;
-      onNavigate(url);
+      Promise.resolve(onNavigate(url)).catch(() => {});
     };
 
     // Reset debounce at the start of each navigation so a revisited URL

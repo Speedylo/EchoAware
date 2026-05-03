@@ -40,13 +40,9 @@ export async function callOpenRouter(representativeTitles) {
         model: config.chatModel,
         messages: [
           {
-            role: 'system',
-            content:
-              'You analyse YouTube echo chambers and suggest alternative content. Always reply with valid JSON only, no markdown fences.',
-          },
-          {
             role: 'user',
             content:
+              'You analyse YouTube echo chambers and suggest alternative content. Always reply with valid JSON only, no markdown fences. ' +
               `The user keeps watching: ${representativeTitles.map(t => `"${t}"`).join(', ')}. ` +
               'Identify the dominant topic and suggest 3 concise YouTube search queries to diversify their feed. ' +
               'Rules: each query must be 3–7 words, sentence case (capitalise first word only), no trailing punctuation. ' +
@@ -68,11 +64,30 @@ export async function callOpenRouter(representativeTitles) {
   }
 
   if (!response.ok) {
-    throw new Error(friendlyOpenRouterError(response.status, await response.text()));
+    const rawBody = await response.text();
+    console.error('[EchoAware] OpenRouter HTTP error:', response.status, rawBody);
+    throw new Error(friendlyOpenRouterError(response.status, rawBody));
   }
   const body = await response.json();
-  const content = body?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('OpenRouter returned an empty response.');
+  const choice = body?.choices?.[0];
+  const content = choice?.message?.content;
+
+  if (!content) {
+    const reason = choice?.finish_reason ?? 'unknown';
+    const refusal = choice?.message?.refusal;
+    console.error('[EchoAware] Empty content from OpenRouter:', JSON.stringify(body));
+    if (refusal) throw new Error(`OpenRouter model refused: ${refusal}`);
+
+    // Reasoning models (e.g. gpt-oss-120b) put output in message.reasoning
+    // instead of message.content — try to extract a JSON block from there.
+    const reasoning = choice?.message?.reasoning ?? '';
+    const reasoningBlock = reasoning.match(/\{[\s\S]*"escapeQueries"[\s\S]*\}/)?.[0];
+    if (reasoningBlock) {
+      try { return JSON.parse(reasoningBlock); } catch {}
+    }
+
+    throw new Error(`OpenRouter returned an empty response (finish_reason: ${reason}).`);
+  }
 
   // Attempt 1: direct parse.
   try { return JSON.parse(content); } catch {}
