@@ -1,7 +1,10 @@
 import * as esbuild from 'esbuild';
 import { readFileSync } from 'fs';
+import { prepareAssets } from './scripts/prepare-assets.mjs';
 
 const watch = process.argv.includes('--watch');
+
+await prepareAssets();
 
 function loadEnv(path = '.env') {
   try {
