@@ -1,29 +1,21 @@
 import * as esbuild from 'esbuild';
-import { readFileSync } from 'fs';
 import { prepareAssets } from './scripts/prepare-assets.mjs';
 
 const watch = process.argv.includes('--watch');
 
 await prepareAssets();
 
-function loadEnv(path = '.env') {
-  try {
-    return Object.fromEntries(
-      readFileSync(path, 'utf8')
-        .split('\n')
-        .filter(line => line && !line.startsWith('#') && line.includes('='))
-        .map(line => { const i = line.indexOf('='); return [line.slice(0, i).trim(), line.slice(i + 1).trim()]; })
-    );
-  } catch {
-    return {};
-  }
-}
+// Build-time constant for the inference Worker. Defaults to staging if not set,
+// so dev builds and `npm run build` both work without a .env file. Set
+// WORKER_URL=https://echoaware-api.<subdomain>.workers.dev/v1/escape-queries
+// for the production build (Phase 5).
+const WORKER_URL =
+  process.env.WORKER_URL ||
+  'https://echoaware-api-staging.younes-rahati.workers.dev/v1/escape-queries';
 
-const env = loadEnv();
-
-const define = Object.fromEntries(
-  Object.entries(env).map(([k, v]) => [`process.env.${k}`, JSON.stringify(v)])
-);
+const define = {
+  'process.env.WORKER_URL': JSON.stringify(WORKER_URL),
+};
 
 const sharedConfig = {
   bundle: true,

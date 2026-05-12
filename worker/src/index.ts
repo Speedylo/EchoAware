@@ -15,7 +15,7 @@ export interface Env {
   CONFIG: KVNamespace;
 }
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);

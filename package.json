@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node build.js",
     "build:watch": "node build.js --watch",
+    "package": "node scripts/package.mjs",
     "prepare-assets": "node scripts/prepare-assets.mjs",
     "lint": "eslint src/**/*.js tests/**/*.js",
     "test": "vitest run",

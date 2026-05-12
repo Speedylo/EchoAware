@@ -13,8 +13,8 @@ vi.mock('../src/background/badgeManager.js', () => ({
   triggerBadgeAlert: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../src/background/openRouterClient.js', () => ({
-  callOpenRouter: vi.fn().mockResolvedValue({
+vi.mock('../src/background/inferenceClient.js', () => ({
+  callInference: vi.fn().mockResolvedValue({
     topicLabel: 'Technology',
     escapeQueries: [
       { queryText: 'nature documentaries' },
@@ -27,9 +27,8 @@ vi.mock('../src/background/openRouterClient.js', () => ({
 vi.mock('../src/storage/configStore.js', () => ({
   getConfig: vi.fn().mockResolvedValue({
     thresholdD: 0.6,
-    inferenceEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
-    chatModel: 'openai/gpt-oss-120b:free',
-    openRouterApiKey: 'test-key',
+    inferenceEndpoint: 'https://echoaware-api-staging.younes-rahati.workers.dev/v1/escape-queries',
+    installToken: '11111111-2222-3333-4444-555555555555',
   }),
 }));
 
@@ -37,7 +36,7 @@ vi.mock('../src/storage/configStore.js', () => ({
 
 import { runAnalysisPipeline } from '../src/background/analysisPipeline.js';
 import { triggerBadgeAlert } from '../src/background/badgeManager.js';
-import { callOpenRouter } from '../src/background/openRouterClient.js';
+import { callInference } from '../src/background/inferenceClient.js';
 
 // ── Chrome API stub ───────────────────────────────────────────────────────────
 
@@ -153,10 +152,10 @@ describe('runAnalysisPipeline — calibration phase (< 5 videos)', () => {
     expect(triggerBadgeAlert).not.toHaveBeenCalled();
   });
 
-  it('does NOT call callOpenRouter during calibration', async () => {
+  it('does NOT call callInference during calibration', async () => {
     buildChromeMock();
     await runAnalysisPipeline(makeMetadata('v0'));
-    expect(callOpenRouter).not.toHaveBeenCalled();
+    expect(callInference).not.toHaveBeenCalled();
   });
 
   it('creates the offscreen document on the first call', async () => {
@@ -215,11 +214,11 @@ describe('runAnalysisPipeline — healthy state (score ≥ threshold)', () => {
     expect(triggerBadgeAlert).toHaveBeenCalled();
   });
 
-  it('does NOT call callOpenRouter when healthy', async () => {
+  it('does NOT call callInference when healthy', async () => {
     await seedVideos(5, {
       clusterAssignmentFn: (embs) => embs.map((_, i) => ({ videoIndex: i, clusterId: i })),
     });
-    expect(callOpenRouter).not.toHaveBeenCalled();
+    expect(callInference).not.toHaveBeenCalled();
   });
 
   it('stores clusters in session state', async () => {
@@ -254,14 +253,14 @@ describe('runAnalysisPipeline — borderline state (threshold ≤ score < 0.8)',
     expect(state.calibrationPhase).toBe(false);
   });
 
-  it('does NOT call callOpenRouter when borderline', async () => {
+  it('does NOT call callInference when borderline', async () => {
     await seedVideos(5, {
       clusterAssignmentFn: (embs) => embs.map((_, i) => ({
         videoIndex: i,
         clusterId: i < 2 ? 0 : i < 4 ? 1 : 2,
       })),
     });
-    expect(callOpenRouter).not.toHaveBeenCalled();
+    expect(callInference).not.toHaveBeenCalled();
   });
 
   it('calls triggerBadgeAlert with the borderline score', async () => {
@@ -295,13 +294,13 @@ describe('runAnalysisPipeline — alert state (score < threshold)', () => {
     expect(state.diversityScore).toBe(0);
   });
 
-  it('calls callOpenRouter with titles from the dominant cluster', async () => {
+  it('calls callInference with titles from the dominant cluster', async () => {
     await seedVideos(5, {
       clusterAssignmentFn: (embs) => embs.map((_, i) => ({ videoIndex: i, clusterId: 0 })),
     });
-    expect(callOpenRouter).toHaveBeenCalledOnce();
+    expect(callInference).toHaveBeenCalledOnce();
 
-    const [titles] = callOpenRouter.mock.calls[0];
+    const [titles] = callInference.mock.calls[0];
     expect(Array.isArray(titles)).toBe(true);
     expect(titles.length).toBeGreaterThan(0);
   });
@@ -322,7 +321,7 @@ describe('runAnalysisPipeline — alert state (score < threshold)', () => {
     expect(dominant.escapeQueries[0].isCopied).toBe(false);
   });
 
-  it('sets enrichmentStatus to done after OpenRouter completes', async () => {
+  it('sets enrichmentStatus to done after inference completes', async () => {
     await seedVideos(5, {
       clusterAssignmentFn: (embs) => embs.map((_, i) => ({ videoIndex: i, clusterId: 0 })),
     });
@@ -337,8 +336,8 @@ describe('runAnalysisPipeline — alert state (score < threshold)', () => {
     expect(triggerBadgeAlert).toHaveBeenCalledWith(0);
   });
 
-  it('survives OpenRouter failure and still writes a final session state', async () => {
-    callOpenRouter.mockRejectedValueOnce(new Error('API unavailable'));
+  it('survives inference failure and still writes a final session state', async () => {
+    callInference.mockRejectedValueOnce(new Error('API unavailable'));
 
     await seedVideos(5, {
       clusterAssignmentFn: (embs) => embs.map((_, i) => ({ videoIndex: i, clusterId: 0 })),
