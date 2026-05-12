@@ -11,7 +11,7 @@ await prepareAssets();
 // for the production build (Phase 5).
 const WORKER_URL =
   process.env.WORKER_URL ||
-  'https://echoaware-api-staging.younes-rahati.workers.dev/v1/escape-queries';
+  'https://echoaware-api.younes-rahati.workers.dev/v1/escape-queries';
 
 const define = {
   'process.env.WORKER_URL': JSON.stringify(WORKER_URL),

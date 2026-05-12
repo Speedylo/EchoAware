@@ -16,7 +16,7 @@ This document contains the listing copy, permission justifications, and data-han
 >
 > Everything that involves your viewing history runs inside your browser. The local clustering uses `all-MiniLM-L6-v2`, an open-source sentence embedding model that runs entirely offline on WASM/ONNX. No watch history, no URLs, and no Google account data ever leaves your device.
 >
-> When an echo chamber is detected, EchoAware sends only the titles of the dominant cluster (up to 5 titles per alert) to our Cloudflare Worker, which generates the escape queries using Cloudflare Workers AI. No logs are kept of these titles. See our privacy policy for details: [PRIVACY_URL].
+> When an echo chamber is detected, EchoAware sends only the titles of the dominant cluster (up to 5 titles per alert) to our Cloudflare Worker, which generates the escape queries using Cloudflare Workers AI. No logs are kept of these titles. See our privacy policy for details: https://github.com/Speedylo/EchoAware/blob/dev/PRIVACY.md.
 >
 > EchoAware works passively. No setup, no API keys, no account required — just install and browse YouTube normally.
 
@@ -60,7 +60,7 @@ Paste each into the corresponding "Permission justification" field.
 
 > Required so the content script can detect navigation events on YouTube and read the public video title from the page. The extension is functionally inert on every other website.
 
-### Host: `https://echoaware-api.<account>.workers.dev/*`
+### Host: `https://echoaware-api.younes-rahati.workers.dev/*`
 
 > Required to send the titles of the dominant cluster to our Cloudflare Worker when an echo chamber is detected. The Worker forwards those titles to Cloudflare Workers AI to generate the escape queries. See the privacy policy for the exact data sent and the no-log policy.
 
@@ -100,9 +100,9 @@ Tick all three:
 
 ### Privacy policy URL
 
-> [PRIVACY_URL]
+> https://github.com/Speedylo/EchoAware/blob/dev/PRIVACY.md
 >
-> _Replace with the GitHub Pages URL once published. Suggested path: `https://speedylo.github.io/EchoAware/PRIVACY.html` or `https://github.com/Speedylo/EchoAware/blob/main/PRIVACY.md`._
+> _Currently points at the `dev` branch. After merging dev → main, update to `https://github.com/Speedylo/EchoAware/blob/main/PRIVACY.md`_
 
 ---
 
@@ -142,7 +142,7 @@ Tips:
 
 - [ ] `npm run build && npm run package` produces `dist/echoaware.zip` cleanly
 - [ ] Grep `dist/background.js` for `OPENROUTER_API_KEY` / `Bearer sk-` / `openrouter.ai` → zero hits
-- [ ] Privacy policy is live and reachable at the URL substituted into [PRIVACY_URL] above
+- [ ] Privacy policy is live and reachable at the URL substituted into https://github.com/Speedylo/EchoAware/blob/dev/PRIVACY.md above
 - [ ] `manifest.json` version is `1.0.0`
 - [ ] `homepage_url` in `manifest.json` points at the GitHub repo
 - [ ] `host_permissions` lists the **production** Worker URL (not staging) — swap during Phase 5

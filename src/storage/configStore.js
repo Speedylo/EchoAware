@@ -3,7 +3,7 @@ import { CONFIG_STORE_KEY } from '../shared/constants.js';
 // Build-time constant injected by build.js; defaults to staging during dev.
 const WORKER_URL =
   (typeof process !== 'undefined' && process.env?.WORKER_URL) ||
-  'https://echoaware-api-staging.younes-rahati.workers.dev/v1/escape-queries';
+  'https://echoaware-api.younes-rahati.workers.dev/v1/escape-queries';
 
 export const DEFAULTS = {
   thresholdD: 0.7,

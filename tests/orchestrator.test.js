@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Unit tests use this staging URL literal (mock config returns the same value).
+// Unit tests use this production URL literal (mock config returns the same value).
 // Integration test uses process.env.WORKER_URL to override against any deployed Worker.
-const STAGING_URL =
-  'https://echoaware-api-staging.younes-rahati.workers.dev/v1/escape-queries';
+const PROD_URL =
+  'https://echoaware-api.younes-rahati.workers.dev/v1/escape-queries';
 
 // ── Module mocks (hoisted by Vitest) ─────────────────────────────────────────
 
@@ -11,7 +11,7 @@ vi.mock('../src/storage/configStore.js', () => ({
   getConfig: vi.fn().mockResolvedValue({
     thresholdD: 0.6,
     inferenceEndpoint:
-      'https://echoaware-api-staging.younes-rahati.workers.dev/v1/escape-queries',
+      'https://echoaware-api.younes-rahati.workers.dev/v1/escape-queries',
     installToken: '11111111-2222-3333-4444-555555555555',
   }),
 }));
@@ -101,7 +101,7 @@ describe('callInference (unit)', () => {
 
     expect(fetch).toHaveBeenCalledOnce();
     const [url, opts] = fetch.mock.calls[0];
-    expect(url).toBe(STAGING_URL);
+    expect(url).toBe(PROD_URL);
     expect(opts.method).toBe('POST');
     expect(opts.headers['Content-Type']).toBe('application/json');
     expect(opts.headers['X-Install-Token']).toBe('11111111-2222-3333-4444-555555555555');
@@ -180,7 +180,7 @@ describe.skipIf(!process.env.WORKER_URL)(
       'returns a topicLabel string and exactly 3 escapeQueries for a real prompt',
       async (ctx) => {
         let response;
-        const integrationUrl = process.env.WORKER_URL || STAGING_URL;
+        const integrationUrl = process.env.WORKER_URL || PROD_URL;
         try {
           response = await fetch(integrationUrl, {
             method: 'POST',

@@ -29,7 +29,7 @@ These records are never transmitted off your device. We do not have a backend th
 When the diversity score crosses the alert threshold **and** the dominant cluster has not already been analysed in this session, EchoAware sends **one HTTPS request** to our Cloudflare Worker at:
 
 ```
-https://echoaware-api.<account>.workers.dev/v1/escape-queries
+https://echoaware-api.younes-rahati.workers.dev/v1/escape-queries
 ```
 
 The request contains:

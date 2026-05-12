@@ -38,7 +38,7 @@
   "permissions": ["storage", "activeTab", "scripting", "offscreen"],
   "host_permissions": [
     "*://*.youtube.com/*",
-    "https://echoaware-api-staging.younes-rahati.workers.dev/*"
+    "https://echoaware-api.younes-rahati.workers.dev/*"
   ],
 
   "content_security_policy": {

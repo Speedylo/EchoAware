@@ -27,7 +27,7 @@ vi.mock('../src/background/inferenceClient.js', () => ({
 vi.mock('../src/storage/configStore.js', () => ({
   getConfig: vi.fn().mockResolvedValue({
     thresholdD: 0.6,
-    inferenceEndpoint: 'https://echoaware-api-staging.younes-rahati.workers.dev/v1/escape-queries',
+    inferenceEndpoint: 'https://echoaware-api.younes-rahati.workers.dev/v1/escape-queries',
     installToken: '11111111-2222-3333-4444-555555555555',
   }),
 }));
