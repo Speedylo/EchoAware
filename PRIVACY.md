@@ -127,7 +127,7 @@ EchoAware is not directed at children under 13. We do not knowingly collect any 
 
 Questions or concerns about this policy?
 
-- **Email:** younes.rahati@lilo.org
+- **Email:** echoaware.support@gmail.com
 - **GitHub Issues:** https://github.com/Speedylo/EchoAware/issues
 
 ---
