@@ -20,6 +20,15 @@ name = "echoaware-api-staging"
 [env.staging.ai]
 binding = "AI"
 
+# Staging-only: Workers Observability for debugging during Phase 3 migration.
+# Captures: request method/path/status/duration, exception stacks, console.* output.
+# Does NOT capture: request/response bodies or headers — so titles and X-Install-Token
+# never appear in logs. Compatible with proxy-plan.md §3 no-log policy.
+# Re-evaluate before enabling in production.
+[env.staging.observability]
+enabled = true
+head_sampling_rate = 1.0
+
 [[env.staging.kv_namespaces]]
 binding = "RATE_LIMIT"
 id = "f38011b665704ca59ab10dbb29490e98"
