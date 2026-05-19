@@ -1,0 +1,62 @@
+# EchoAware inference Worker
+#
+# Phase 2: Workers AI + KV (rate-limit, budget, config) + kill switch.
+# Same KV namespace IDs are used for staging and production for now; split
+# them later if staging starts polluting prod counters.
+#
+# Deploy:
+#   npm run deploy:staging      → echoaware-api-staging.<subdomain>.workers.dev
+#   npm run deploy:production   → echoaware-api.<subdomain>.workers.dev
+
+name = "echoaware-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+
+# ─── Staging ──────────────────────────────────────────────────────────────────
+
+[env.staging]
+name = "echoaware-api-staging"
+
+[env.staging.ai]
+binding = "AI"
+
+# Staging-only: Workers Observability for debugging during Phase 3 migration.
+# Captures: request method/path/status/duration, exception stacks, console.* output.
+# Does NOT capture: request/response bodies or headers — so titles and X-Install-Token
+# never appear in logs. Compatible with proxy-plan.md §3 no-log policy.
+# Re-evaluate before enabling in production.
+[env.staging.observability]
+enabled = true
+head_sampling_rate = 1.0
+
+[[env.staging.kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "f38011b665704ca59ab10dbb29490e98"
+
+[[env.staging.kv_namespaces]]
+binding = "BUDGET"
+id = "fd3642f138f74343a86d65b50a1af4e4"
+
+[[env.staging.kv_namespaces]]
+binding = "CONFIG"
+id = "9a1b99f4e63a43a6b1660ffb843bc26e"
+
+# ─── Production ───────────────────────────────────────────────────────────────
+
+[env.production]
+name = "echoaware-api"
+
+[env.production.ai]
+binding = "AI"
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "f38011b665704ca59ab10dbb29490e98"
+
+[[env.production.kv_namespaces]]
+binding = "BUDGET"
+id = "fd3642f138f74343a86d65b50a1af4e4"
+
+[[env.production.kv_namespaces]]
+binding = "CONFIG"
+id = "9a1b99f4e63a43a6b1660ffb843bc26e"

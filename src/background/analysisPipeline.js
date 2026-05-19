@@ -7,7 +7,7 @@ import { getStorageManager } from '../storage/StorageManager.js';
 import { getConfig } from '../storage/configStore.js';
 import { calculateSimpsonsDiversity } from './diversityCalculator.js';
 import { triggerBadgeAlert } from './badgeManager.js';
-import { callOpenRouter } from './openRouterClient.js';
+import { callInference } from './inferenceClient.js';
 import { MIN_VIDEOS_CALIBRATION, OFFSCREEN_HTML_PATH } from '../shared/constants.js';
 
 const SESSION_ID_KEY = 'echoaware_session_id';
@@ -76,11 +76,11 @@ async function _run(metadata) {
   }
 }
 
-// Calls OpenRouter and applies the result to the dominant cluster object in-place.
-// Returns { enrichmentStatus, enrichmentError } so the caller can persist them.
+// Calls the inference Worker and applies the result to the dominant cluster
+// in-place. Returns { enrichmentStatus, enrichmentError } so the caller can persist.
 async function _runEnrichment(dominant, dominantTitles) {
   try {
-    const enriched = await callOpenRouter(dominantTitles);
+    const enriched = await callInference(dominantTitles);
     if (enriched) {
       dominant.topicLabel = enriched.topicLabel ?? '';
       dominant.escapeQueries = (enriched.escapeQueries ?? []).map((q, i) => ({
@@ -91,7 +91,7 @@ async function _runEnrichment(dominant, dominantTitles) {
     }
     return { enrichmentStatus: 'done', enrichmentError: null };
   } catch (err) {
-    console.error('[EchoAware] OpenRouter enrichment failed:', err);
+    console.error('[EchoAware] Inference enrichment failed:', err);
     return { enrichmentStatus: 'error', enrichmentError: err?.message ?? String(err) };
   }
 }
@@ -191,8 +191,9 @@ async function _runInner(metadata) {
     (best, c) => c.size > (best?.size ?? -1) ? c : best, null
   )?.clusterId ?? null;
 
-  // Carry returned queries and label forward from the previous run so we don't re-hit OpenRouter
-  // on every new video, which exhausts the 50/day free-tier quota rapidly
+  // Carry returned queries and label forward from the previous run so we don't re-hit the
+  // inference Worker on every new video — preserves per-token daily budget and the dominant
+  // cluster's existing topicLabel/escapeQueries.
   const prevState = await storage.getSessionState(sessionId);
   const prevByCluster = new Map(
     (prevState?.clusters ?? []).map(c => [c.clusterId, c])
@@ -232,9 +233,11 @@ async function _runInner(metadata) {
     const dominantIndices = new Set(
       clusterAssignments.filter(a => a.clusterId === dominantClusterId).map(a => a.videoIndex)
     );
-    const dominantTitles = embeddedVideos
-      .filter((_, i) => dominantIndices.has(i))
-      .map(v => v.title);
+    // Dedup by title (two different URLs can share a title), then cap at 5 to
+    // match the Worker's input schema (worker/src/schema.ts max(5)).
+    const dominantTitles = [...new Set(
+      embeddedVideos.filter((_, i) => dominantIndices.has(i)).map(v => v.title)
+    )].slice(-5);
 
     ({ enrichmentStatus, enrichmentError } = await _runEnrichment(dominant, dominantTitles));
   }

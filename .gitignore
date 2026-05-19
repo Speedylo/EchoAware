@@ -1,7 +1,8 @@
 dist/
 node_modules/
-.env
-.env.local
+assets/models/
+assets/wasm/
+.env.*
 *.env
 coverage/
 .vitest/
@@ -10,3 +11,4 @@ Thumbs.db
 npm-debug.log*
 System Architecture and Data Model/
 .claude/
+docs/
