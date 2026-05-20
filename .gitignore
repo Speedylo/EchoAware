@@ -2,7 +2,7 @@ dist/
 node_modules/
 assets/models/
 assets/wasm/
-.env
+.env.*
 .env.local
 *.env
 coverage/
